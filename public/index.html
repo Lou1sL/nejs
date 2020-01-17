@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="format-detection" content="telephone=yes" />
+  <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+  <title>NEJS</title>
+  <style>
+    html { background: #fff; }
+  </style>
+</head>
+
+<body>
+  <noscript>
+    <strong>请启用JavaScript浏览本页面</strong>
+  </noscript>
+  <div id="app"></div>
+
+
+  <script>
+    let img = 'https://s2.ax1x.com/2019/09/27/uuMdEt.gif'
+    let company =
+      "\n\n\n" +
+      "\t    __  ___ ____  _      __ ___     ______ ____ _____ __ __  \t\n" +
+      "\t   /  |/  // __ \\| | /| / // _ |   /_  __// __// ___// // /  \t\n" +
+      "\t  / /|_/ // /_/ /| |/ |/ // __ |    / /  / _/ / /__ / _  /   \t\n" +
+      "\t /_/  /_/ \\____/ |__/|__//_/ |_|   /_/  /___/ \\___//_//_/    \t\n" +
+      "                                                            \t\n" +
+      "\n\n\t 魔蛙科技期待你的加入哦~~ \t" +
+      "\n\n\t （联系QQ:156890093 留白君） \t" +
+      "\n\n\n\t "
+
+    var image = new Image();
+    image.onload = () => {
+      console.log('%c' + company, [
+        'color: #046;',
+        'font-weight:600;',
+        'background: url(' + img + ');',
+        'background-size: auto;',
+        'background-position: right bottom;',
+        'background-repeat: no-repeat;',
+      ].join(' '));
+    };
+    image.src = img;
+  </script>
+</body>
+
+</html>

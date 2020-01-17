@@ -1,0 +1,42 @@
+{
+  "name": "nejs",
+  "version": "1.0.0",
+  "description": "NES simulator in javascript",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "author": "RyuBAI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyuBAI/nejs.git"
+  },
+  "keywords": [
+    "nes",
+    "simulator"
+  ],
+  "bugs": {
+    "url": "https://github.com/RyuBAI/nejs/issues"
+  },
+  "homepage": "https://github.com/RyuBAI/nejs#readme",
+  "dependencies": {
+    "canvas": "^2.6.1",
+    "vue": "^2.6.11"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.4.4",
+    "@vue/cli-plugin-babel": "^3.7.0",
+    "@vue/cli-service": "^3.7.0",
+    "@vux/loader": "^2.0.0-rc4",
+    "babel-runtime": "^6.26.0",
+    "less": "^3.9.0",
+    "less-loader": "^5.0.0",
+    "node-sass": "^4.12.0",
+    "sass-loader": "^8.0.0",
+    "vue-cli-plugin-vux": "^3.0.0",
+    "vue-loader": "15.7.0",
+    "vue-template-compiler": "^2.6.10"
+  }
+}
