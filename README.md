@@ -1,20 +1,2 @@
 # nejs
-javascript nes(fc) simulator
-
-test:
-
-    node index.js
-
-
-
-todo:
-
-cpu
-
-ppu
-
-apu
-
-mapper
-
-main
+nes(fc) simulator in browser
