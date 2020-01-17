@@ -1,17 +1,29 @@
 <template>
     <div id="app">
-        <h1>sss</h1>
+        <canvas ref="myCanvas" id="canvas" width="800" height="600"></canvas>
     </div>
 </template>
 
 <script>
+
+import CPU from './nes/cpu'
+
 export default {
     name: "nejs",
-        data() { return { } },
-        created() { },
-        mounted(){ },
-        destroyed(){ },
-        methods:{  }
+        data() { return {  } },
+        created() {  },
+        mounted(){
+            var canvas = this.$refs.myCanvas
+            const ctx = canvas.getContext('2d')
+            ctx.clearRect(0,0,canvas.width,canvas.height)
+            ctx.fillStyle = "black"
+            ctx.font="20px Georgia"
+            ctx.fillText('aaa',10,50)
+         },
+        destroyed(){  },
+        methods:{  },
+        computed: {  },
+        render(){  }
 }
 </script>
 

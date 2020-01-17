@@ -183,7 +183,7 @@ class CPU{
      * absolute y-indexed : R16(pc) + y
      * indirect y-indexed : R16(R(pc)) + y !
      * 
-     * !:R16() 8-bit lo-addr page overflow should occur
+     * !:R16() 8-bit lo-addr page overflow should occur??
      */
     addrIMME()   { return this.getPC() }
     addrRELA()   { return this.getPC() }
@@ -390,4 +390,4 @@ class CPU{
     dbgBinStr(val)  { return (val & 0xFF).toString(2).padStart(8, '0').replace(/1/g,'😊 ').replace(/0/g,'😭 ') }
 }
 
-module.exports = CPU
+export default CPU
