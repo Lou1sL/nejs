@@ -120,6 +120,20 @@ class Addr {
     setNameTbY(val){ this.value &= ~ADDR_NY; this.value |= ((val & 0b00001) << 11) }
     setFineY  (val){ this.value &= ~ADDR_y;  this.value |= ((val & 0b00111) << 12) }
 }
+class FineX {
+    constructor()    { this.value = 0           }
+    reset      ()    { this.value = 0           }
+    get        ()    { return this.value        }
+    set        (val) { this.value = val & 0b111 }
+}
+class WLatch {
+    constructor() { this.value = false }
+    reset      () { this.value = false }
+    isOn       () { return  this.value }
+    isOff      () { return !this.value }
+    setOn      () { this.value = true  }
+    setOff     () { this.value = false }
+}
 class Ctrl {
     constructor()    { this.value = 0          }
     reset      ()    { this.value = 0          }
@@ -175,7 +189,7 @@ class RenderIterator {
     getCycle   ()    { return this.cycle                 }
 
     getState()  {
-        var state = { scanline:SCANLINE_STATE.NOP, cycle:-1 }
+        var state = { scanline:SCANLINE_STATE.NOP, cycle:CYCLE_STATE.IDLE }
              if(this.scanline <  240) state.scanline = SCANLINE_STATE.VISIBLE
         else if(this.scanline == 240) state.scanline = SCANLINE_STATE.POSTRENDER
         else if(this.scanline == 241) state.scanline = SCANLINE_STATE.VBLANK
@@ -203,25 +217,9 @@ class RenderIterator {
         if(this.scanline > 261) this.scanline = 0
     }
 }
-class PPU {
-    constructor(bus){
-        //Internal RAM
-        this.oam = new OAM() //For sprite data(64*4(x,y,color,tile))
 
-        //Register
-        this.v = new Addr()    //15 bits  Current VRAM address
-        this.t = new Addr()    //15 bits  Temporary VRAM address (15 bits); can also be thought of as the address of the top left onscreen tile.
-        this.x = 0x00          //3  bits  Fine X scroll
-        this.w = 0x00          //1  bit   First or second write toggle (1 bit)
-        this.ctrl = new Ctrl() //0x2000
-        this.mask = new Mask() //0x2001
-        this.stat = new Stat() //0x2002
-        this.reg_buffer = 0x00
-
-        this.bus = bus
-
-        this.pixelIter = new RenderIterator()
-
+class RenderInfo {
+    constructor(){
         //Background
         this.bg_id = 0
         this.bg_at = 0
@@ -232,16 +230,43 @@ class PPU {
         this.bg_s_ptn_h = 0
         this.bg_s_atr_l = 0
         this.bg_s_atr_h = 0
-        
+        //Sprite
         this.spriteScanline = new Array(0)
         for(var i=0;i<8;i++) this.spriteScanline.push(new Sprite())
         this.spriteCount = 0
         this.sp_s_ptl_l = new Uint8Array(8)
-        this.sp_s_ptl_h = new Uint8Array(8)
+        this.sp_s_ptl_h = new Uint8Array(8) 
 
+        this.spriteZeroHitPossible   = false
+	    this.spriteZeroBeingRendered = false
     }
-    busR()        { return this.bus.r(this.v.get()) }
-    busW(data)    { this.bus.w(this.v.get(),data)   }
+
+}
+
+class PPU {
+    constructor(bus){
+        //Internal RAM
+        this.oam  = new OAM() //For sprite data(64*4(x,y,color,tile))
+
+        //Register
+        this.v    = new Addr()    //15 bits  Current VRAM address
+        this.t    = new Addr()    //15 bits  Temporary VRAM address (15 bits); can also be thought of as the address of the top left onscreen tile.
+        this.x    = new FineX()   //3  bits  Fine X scroll
+        this.w    = new WLatch()  //1  bit   First or second write toggle (1 bit)
+        this.ctrl = new Ctrl() //0x2000
+        this.mask = new Mask() //0x2001
+        this.stat = new Stat() //0x2002
+        this.reg_buffer = 0x00
+
+        this.bus = bus
+
+        this.pixelIter = new RenderIterator()
+        this.render = new RenderInfo()
+    }
+    busR()      { return this.bus.r(this.v.get()) }
+    busW(data)  { this.bus.w(this.v.get(),data)   }
+    busRAddr(addr)      { return this.bus.r(addr) }
+    busWAddr(addr,data) { this.bus.w(addr,data)   }
 
 
     countAddr()   { this.v.set(this.v.get() + (this.ctrl.isInc32() ? 32 : 1)) }
@@ -250,8 +275,8 @@ class PPU {
         //this.oam.reset()
         this.v.reset()
         this.t.reset()
-        this.x = 0
-        this.w = 0
+        this.x.reset()
+        this.w.reset()
         this.ctrl.reset()
         this.mask.reset()
         this.stat.reset()
@@ -277,7 +302,7 @@ class PPU {
         //clear nmi(vblank)
         this.stat.clrVBlank()
         //reset write latch
-        this.w = 0
+        this.w.reset()
         return res
      }
     //0x2004 OAMDATA
@@ -307,25 +332,25 @@ class PPU {
     }
     //0x2005 PPUSCROLL (x2)
     REG_SCRL_W (val){
-        if(this.w == 0){
+        if(this.w.isOff()){
             this.t.setCoarseX(val >> 3)
-            this.x = val & 0b111
-            this.w = 1
+            this.x.set(val)
+            this.w.setOn()
         }else{
             this.t.setFineY(val & 0b111)
             this.t.setCoarseY(val >>  3)
-            this.w = 0
+            this.w.setOff()
         }
     }
     //0x2006 PPUADDR   (x2)
     REG_ADDR_W (val){
-        if(this.w == 0){
+        if(this.w.isOff()){
             this.t.set((this.t.get() & 0b1000000011111111) | ((val & 0b00111111) << 8))
-            this.w = 1
+            this.w.setOn()
         }else{
             this.t.set((this.t.get() & 0xFF00) | (val & 0xFF))
             this.v.set(this.t.get())
-            this.w = 0
+            this.w.setOff()
         }
     }
     //0x2007 PPUDATA
@@ -374,29 +399,29 @@ class PPU {
         this.v.setFineY(this.t.getFineY())
     }
     reloadBgShifter(){
-        this.bg_s_ptn_l = (this.bg_s_ptn_l & 0xFF00) | bg_l
-        this.bg_s_ptn_h = (this.bg_s_ptn_h & 0xFF00) | bg_h
+        this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l & 0xFF00) | this.render.bg_l
+        this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h & 0xFF00) | this.render.bg_h
 
-        this.bg_s_atr_l = (this.bg_s_atr_l & 0xFF00) | ((bg_at & 0b01) ? 0xFF:0x00)
-        this.bg_s_atr_h = (this.bg_s_atr_h & 0xFF00) | ((bg_at & 0b10) ? 0xFF:0x00)
+        this.render.bg_s_atr_l = (this.render.bg_s_atr_l & 0xFF00) | ((this.render.bg_at & 0b01) ? 0xFF:0x00)
+        this.render.bg_s_atr_h = (this.render.bg_s_atr_h & 0xFF00) | ((this.render.bg_at & 0b10) ? 0xFF:0x00)
     }
     updateShifter(){
         if(this.mask.isRenderBg()){
-            this.bg_s_ptn_l <<= 1
-            this.bg_s_ptn_h <<= 1
-            this.bg_s_atr_l <<= 1
-            this.bg_s_atr_h <<= 1
+            this.render.bg_s_ptn_l <<= 1
+            this.render.bg_s_ptn_h <<= 1
+            this.render.bg_s_atr_l <<= 1
+            this.render.bg_s_atr_h <<= 1
         }
         if(this.mask.isRenderSprite()){
             var cycle = this.pixelIter.getCycle()
             if(cycle>0 && cycle<258){
-                for(var i=0;i<this.spriteCount;i++){
-                    var x = this.spriteScanline[i].getX()
-                    if (x > 0)this.spriteScanline[i].setX(x-1)
+                for(var i=0;i<this.render.spriteCount;i++){
+                    var x = this.render.spriteScanline[i].getX()
+                    if (x > 0)this.render.spriteScanline[i].setX(x-1)
                     else
                     {
-                        this.sp_s_ptl_l[i] <<= 1
-                        this.sp_s_ptl_h[i] <<= 1
+                        this.render.sp_s_ptl_l[i] <<= 1
+                        this.render.sp_s_ptl_h[i] <<= 1
                     }
                 }
             }
@@ -405,83 +430,89 @@ class PPU {
 
     
 
-    scanlineNmi(){ }
 
-    STEP(){
-        
-        var scanline = this.pixelIter.getScanline()
+
+
+
+
+    scanlinePre(){
+        if(cycle == 1){
+            this.stat.clrAll()
+            this.render.sp_s_ptl_h = new Uint8Array(8)
+            this.render.sp_s_ptl_l = new Uint8Array(8)
+        }
+        if(cycle >= 280 && cycle <= 304) this.transferAddrY()
+    }
+    scanlineRender(){
         var cycle = this.pixelIter.getCycle()
-        var state = this.pixelIter.getState()
 
-        if(state.scanline == SCANLINE_STATE.POSTRENDER){ /** do nothing */ }
-        if(state.scanline == SCANLINE_STATE.VBLANK && cycle == 1)
-            { this.stat.setVBlank(); if(this.ctrl.isVBlank()) this.bus.nmi()  }
-
-        
         //Sprite
+        switch(cycle){
+            case 1: break
+            case 257: break
+            case 321: break
+        }
 
         //Background
+        if ((cycle >= 2 && cycle <= 257) || (cycle >= 321 && cycle <= 337)){
+            this.updateShifter()
+            switch ((cycle - 1) % 8){
+                case 0 :
+                    this.reloadBgShifter()
+                    this.render.bg_id = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
+                break
+                case 2 :
+                    this.render.bg_at = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11) 
+                                                            | (this.v.getNameTbX() << 10) 
+                                                            | ((this.v.getCoarseY() >> 2) << 3) 
+                                                            | (this.v.getCoarseX() >> 2))
+                    if(this.v.getCoarseX() & 0x02
+                break
+                case 4 :
 
+                break
+                case 6 :
 
-        if(state.scanline == SCANLINE_STATE.PRERENDER){
-            if(cycle == 1){
-                this.stat.clrAll()
-                this.sp_s_ptl_l = new Uint8Array(8)
-                this.sp_s_ptl_h = new Uint8Array(8)
-            }
-            if(cycle >= 280 && cycle <= 304){
-                this.transferAddrY()
+                break
+                case 7 :
+                    this.incScrollX()
+                break
             }
         }
-
-        if(state.scanline == SCANLINE_STATE.VISIBLE){
-
-
+        if(cycle == 256){
 
         }
+        if(cycle == 257){
 
-        if(state == 'PRERENDER' || state == 'VISIBLE'){
-            if ((cycle >= 2 && cycle <= 257) || (cycle >= 321 && cycle <= 337)){
-                this.updateShifter()
-                switch ((cycle - 1) % 8){
-                    case 0 :
-                        this.reloadBgShifter()
-                        this.bg_id = this.busR()
-                    break
-                    case 2 :
+        }
+        if(cycle == 338){
 
-                    break
-                    case 4 :
-                    
-                    break
-                    case 6 :
-
-                    break
-                    case 7 :
-                        this.incScrollX()
-                    break
-                }
-            }
-            if(cycle == 256){
-
-            }
-            if(cycle == 257){
-
-            }
-            if(cycle == 338 || cycle == 340){
-
-            }
+        }
+        if(cycle == 340){
 
         }
 
 
+    }
+    scanlinePost(){
+        /** do nothing TODO: Render it! */
+    }
+    scanlineNmi(){
+        if(this.pixelIter.getCycle() == 1){
+            this.stat.setVBlank()
+            if(this.ctrl.isVBlank())this.bus.nmi()
+        }
+    }
+    
 
-
-        /**
-         * TODO: Render it!
-         */
-
-
+    STEP(){
+        var state = this.pixelIter.getState()
+        switch(state){
+            case SCANLINE_STATE.PRERENDER: this.scanlinePre(); this.scanlineRender(); break
+            case SCANLINE_STATE.VISIBLE: this.scanlineRender(); break
+            case SCANLINE_STATE.POSTRENDER: this.scanlinePost(); break
+            case SCANLINE_STATE.VBLANK: this.scanlineNmi(); break
+        }
         this.pixelIter.iterate()
     }
 
