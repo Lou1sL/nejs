@@ -164,17 +164,29 @@ class Stat {
     clrOv    (){ this.value &= ~STAT_O }
     clrAll   (){ this.clrVBlank(); this.clrHit(); this.clrOv() }
 }
+
+//https://wiki.nesdev.com/w/index.php/PPU_rendering#Cycle_0
+var SCANLINE_STATE = { PRERENDER:0, VISIBLE:1, POSTRENDER:2, VBLANK:3, NOP:-1 }
+var    CYCLE_STATE = { IDLE:0, FETCH_TILE:1, SPRITE_EVAL:2, PREFETCH:3, TBFETCH:4  }
 class RenderIterator {
     constructor()    { this.scanline = 0; this.cycle = 0 }
     reset      ()    { this.scanline = 0; this.cycle = 0 }
     getScanline()    { return this.scanline              }
     getCycle   ()    { return this.cycle                 }
 
-    scanlineState()  {
-        if(this.scanline ==  -1)                       return 'PRERENDER'
-        if(this.scanline >= 0 && this.scanline <= 239) return 'VISIBLE'
-        if(this.scanline == 240)                       return 'POSTRENDER'
-        if(this.scanline == 241)                       return 'NMI'
+    getState()  {
+        var state = { scanline:SCANLINE_STATE.NOP, cycle:-1 }
+             if(this.scanline <  240) state.scanline = SCANLINE_STATE.VISIBLE
+        else if(this.scanline == 240) state.scanline = SCANLINE_STATE.POSTRENDER
+        else if(this.scanline == 241) state.scanline = SCANLINE_STATE.VBLANK
+        else if(this.scanline == 261) state.scanline = SCANLINE_STATE.PRERENDER
+
+             if(this.cycle ==   0) state.cycle = CYCLE_STATE.IDLE
+        else if(this.cycle <= 256) state.cycle = CYCLE_STATE.FETCH_TILE
+        else if(this.cycle <= 320) state.cycle = CYCLE_STATE.SPRITE_EVAL
+        else if(this.cycle <= 336) state.cycle = CYCLE_STATE.PREFETCH
+        else if(this.cycle <= 340) state.cycle = CYCLE_STATE.TBFETCH
+        return state
     }
 
     iterate(){
@@ -188,7 +200,7 @@ class RenderIterator {
     iterateScanline(){
         this.cycle = 0
         this.scanline++
-        if(this.scanline > 260) this.scanline = -1
+        if(this.scanline > 261) this.scanline = 0
     }
 }
 class PPU {
@@ -399,14 +411,33 @@ class PPU {
         
         var scanline = this.pixelIter.getScanline()
         var cycle = this.pixelIter.getCycle()
-        var state = this.pixelIter.scanlineState()
+        var state = this.pixelIter.getState()
 
-        if(state == 'PRERENDER'){
+        if(state.scanline == SCANLINE_STATE.POSTRENDER){ /** do nothing */ }
+        if(state.scanline == SCANLINE_STATE.VBLANK && cycle == 1)
+            { this.stat.setVBlank(); if(this.ctrl.isVBlank()) this.bus.nmi()  }
+
+        
+        //Sprite
+
+        //Background
+
+
+        if(state.scanline == SCANLINE_STATE.PRERENDER){
             if(cycle == 1){
                 this.stat.clrAll()
                 this.sp_s_ptl_l = new Uint8Array(8)
                 this.sp_s_ptl_h = new Uint8Array(8)
             }
+            if(cycle >= 280 && cycle <= 304){
+                this.transferAddrY()
+            }
+        }
+
+        if(state.scanline == SCANLINE_STATE.VISIBLE){
+
+
+
         }
 
         if(state == 'PRERENDER' || state == 'VISIBLE'){
@@ -415,13 +446,40 @@ class PPU {
                 switch ((cycle - 1) % 8){
                     case 0 :
                         this.reloadBgShifter()
+                        this.bg_id = this.busR()
+                    break
+                    case 2 :
 
                     break
+                    case 4 :
+                    
+                    break
+                    case 6 :
 
+                    break
+                    case 7 :
+                        this.incScrollX()
+                    break
                 }
+            }
+            if(cycle == 256){
+
+            }
+            if(cycle == 257){
+
+            }
+            if(cycle == 338 || cycle == 340){
+
             }
 
         }
+
+
+
+
+        /**
+         * TODO: Render it!
+         */
 
 
         this.pixelIter.iterate()
