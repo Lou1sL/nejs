@@ -8,7 +8,7 @@
  * 
  * RAM       : 2048  Bytes = 0x0800 = 0x0100 0page + 0x0100 stack + 0x0600 ram
  * IO        : 40    Bytes = 0x0028 = 0x0008 ppu io + 0x0020 apu(except ODMA) io
- * External  : 49120 Bytes = 0xBFE0 = 0x1FE0 exrom + 0x2000 sram + 0x8000 prgrom
+ * External  : 49120 Bytes = 0xBFE0 = 0x1FE0 exrom + 0x2000 wram + 0x8000 prgrom
  * Mirrored  : 14328 Bytes = 0x37F8 = 0x0800*3 ram mirror + 0x0008*1023 io mirror
  * 
  * TOTAL     : 65536 Bytes (16-bit address)
@@ -18,7 +18,7 @@ const CPU_ADDR_SIZE     = 0x10000
 const CPU_RAM_SIZE      = 0x0800
 const CPU_RAM_ADDR_SIZE = 0x2000
 const CPU_ExROM_SIZE    = 0x1FE0
-const CPU_SRAM_SIZE     = 0x2000
+const CPU_WRAM_SIZE     = 0x2000
 const CPU_PRGROM_SIZE   = 0x8000
 
 const CPU_MEM_0PAGE       = 0x0000  // 0x0100
@@ -130,13 +130,15 @@ class CPUBus {
     constructor(){
         this.ram    = new Uint8Array(CPU_RAM_SIZE   )
         this.exrom  = new Uint8Array(CPU_ExROM_SIZE )
-        this.sram   = new Uint8Array(CPU_SRAM_SIZE  )
+        this.wram   = new Uint8Array(CPU_WRAM_SIZE  )
         this.prgrom = new Uint8Array(CPU_PRGROM_SIZE)
     }
+
     bindPPU   (ppu) { this.ppu = ppu    }
-    bindExROM (rom) { this.exrom = rom  }
-    bindSRAM  (ram) { this.sram = ram   }
     bindPRGROM(rom) { this.prgrom = rom }
+    bindWRAM  (ram) { this.wram = ram   }
+    bindExROM (rom) { this.exrom = rom  }
+
     r(addr){
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
             return this.ram[addr%CPU_RAM_SIZE]
@@ -202,9 +204,9 @@ class PPUBus {
         this.plet = new Uint8Array(PPU_PLT_SIZE)
         this.mirr = MIRRORING.VERTICAL
     }
-    setMirroring (val) { this.mirr = val      }
     bindCPU      (cpu) { this.cpu = cpu       }
     nmi          ()    { this.cpu.nmi()       }
+    setMirroring (val) { this.mirr = val      }
     bindCHRROM   (val) { this.chrrom = val    }
 
     r(addr){

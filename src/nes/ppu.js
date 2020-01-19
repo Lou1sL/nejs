@@ -274,7 +274,7 @@ class PPU {
 
     countAddr()   { this.v.set(this.v.get() + (this.ctrl.isInc32() ? 32 : 1)) }
 
-    RESET (){
+    RST (){
         //this.oam.reset()
         this.v.reset()
         this.t.reset()
