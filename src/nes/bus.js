@@ -97,6 +97,7 @@ const CPU_MEM_PRG_ROM     = 0x8000  // 0x8000
 */
 
 const PPU_ADDR_SIZE = 0x10000
+const PPU_CHR_SIZE = 0x2000
 const PPU_RAM_SIZE = 0x0800
 const PPU_PLT_SIZE = 0x0020
 
@@ -197,18 +198,45 @@ class CPUBus {
 class PPUBus {
     constructor(){
         this.vram = new Uint8Array(PPU_RAM_SIZE)
+        this.chrrom =  new Uint8Array(PPU_CHR_SIZE)
         this.plet = new Uint8Array(PPU_PLT_SIZE)
+        this.mirr = MIRRORING.VERTICAL
     }
+    setMirroring (val) { this.mirr = val      }
     bindCPU      (cpu) { this.cpu = cpu       }
     nmi          ()    { this.cpu.nmi()       }
+    bindCHRROM   (val) { this.chrrom = val    }
+
     r(addr){
-        return this.vram[addr]
+        if(addr >= 0 && addr < PPU_CHR_SIZE) return this.chrrom[addr]
+        else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
+            switch(this.mirr){
+                case MIRRORING.VERTICAL: return this.vram[addr % PPU_RAM_SIZE]
+                case MIRRORING.HORIZONTAL: return this.vram[((addr / 2) & (PPU_RAM_SIZE / 2)) + (addr % (PPU_RAM_SIZE / 2))]
+            }
+        }
+        else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){
+            if ((addr & 0x13) == 0x10) addr &= ~0x10
+            return this.plet[addr & 0x1F] & (mask.gray ? 0x30 : 0xFF) //TODO: mask gray
+        }
+        return 0
     }
     w(addr,data){
-        this.vram[addr] = data
+        if(addr >= 0 && addr < PPU_CHR_SIZE) this.chrrom[addr] = data
+        else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
+            switch(this.mirr){
+                case MIRRORING.VERTICAL: this.vram[addr % PPU_RAM_SIZE] = data; break
+                case MIRRORING.HORIZONTAL: this.vram[((addr / 2) & (PPU_RAM_SIZE / 2)) + (addr % (PPU_RAM_SIZE / 2))] = data; break
+            }
+        }
+        else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){
+            if ((addr & 0x13) == 0x10) addr &= ~0x10
+            this.plet[addr & 0x1F] = data
+        }
     }
-    
 }
 
+var MIRRORING = { VERTICAL:0, HORIZONTAL:1 }
 
-module.exports = { CPUBus, PPUBus }
+
+module.exports = { CPUBus, PPUBus, MIRRORING }

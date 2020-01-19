@@ -1,24 +1,24 @@
-const PPU = require('./ppu')
 
-class mapper {
+class Mapper {
     constructor(rom){
-        this.prgSize      = rom[4] * 0x4000
-        this.chrSize      = rom[5] * 0x2000
+        //https://wiki.nesdev.com/w/index.php/INES
+        this.prgSize    = rom[4] * 0x4000
+        this.chrSize    = rom[5] * 0x2000
+        this.isHoriMirr = ((rom[6] >> 0) & 1) == 0
+        this.batteryPrg = ((rom[6] >> 1) & 1) == 1
+        this.hasTrainer = ((rom[6] >> 2) & 1) == 1
+        this.fourScreen = ((rom[6] >> 3) & 1) == 1
+        this.mapperNum   = (rom[7] & 0xF0) | (rom[6] >> 4)
         this.prgRamSize   = rom[8] ? rom[8] * 0x2000 : 0x2000
 
-        PPU.setMirroring((rom[6] & 1) ? PPU.VERTICAL : PPU.HORIZONTAL)
-
-        var mapperNum = (rom[7] & 0xF0) | (rom[6] >> 4)
-
-        switch (mapperNum)
-        {
-            case 0:  mapper = new Mapper0(rom); break;
-            case 1:  mapper = new Mapper1(rom); break;
-            case 2:  mapper = new Mapper2(rom); break;
-            case 3:  mapper = new Mapper3(rom); break;
-            case 4:  mapper = new Mapper4(rom); break;
-        }
-
+        
+        console.log(
+            'Cartridge Info: \n' + 
+            'PRG: ' + this.prgSize + ' Byte(s). \n' + 
+            'CHR: ' + this.chrSize + ' Byte(s). \n' + 
+            'PRG(ram): ' + this.prgRamSize + ' Byte(s). \n' + 
+            'Mirroring: ' + (this.isHoriMirr ? 'Horizontal' : 'Vertical') + '\n' + 
+            'MapperNo: ' + this.mapperNum)
     }
 
     
@@ -40,3 +40,5 @@ class mapper {
             this.chrMap[pageKBs*slot + i] = (pageKBs*0x400*bank + 0x400*i) % this.chrSize
     }
 }
+
+module.exports = Mapper

@@ -15,7 +15,8 @@ var cpu_test = new CPU(new CPU_BUS_TEST())
 cpu_test.pc(0x0400)
 while(true){
     cpu_test.STEP()
-    if(cpu_test.getPC() == 0x32E8) { console.log('CPU test passed');break }
+    //cpu_test.DEBUG_LOG()
+    if(cpu_test.getPC() == 0x32E8) { console.log('CPU test passed.(no decimal)');break }
 }
 //------------------------
 
@@ -38,14 +39,8 @@ const HEIGHT = 240
 var canvas = createCanvas(WIDTH, HEIGHT)
 var ctx = canvas.getContext('2d')
 
-
-
-function load(path){
-    var rom = FS.readFileSync(path, null)
-    mapper = new Mapper(rom)
-    PPU.reset()
-    APU.reset()
-}
+var rom = fs.readFileSync('./DonkeyKong.nes', null)
+var mapper = new Mapper(rom)
 
 
 

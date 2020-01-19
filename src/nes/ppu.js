@@ -151,6 +151,9 @@ class Ctrl {
     clrVBlank(){ this.value &= ~CTRL_V }
     clr8x16  (){ this.value &= ~CTRL_H }
     clrInc32 (){ this.value &= ~CTRL_I }
+
+    getBgSelection     () { return this.value & CTRL_B }
+    getSpriteSelection () { return this.value & CTRL_S }
 }
 class Mask {
     constructor()    { this.value = 0          }
@@ -463,16 +466,21 @@ class PPU {
                 break
                 case 2 :
                     this.render.bg_at = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11) 
-                                                            | (this.v.getNameTbX() << 10) 
-                                                            | ((this.v.getCoarseY() >> 2) << 3) 
-                                                            | (this.v.getCoarseX() >> 2))
-                    if(this.v.getCoarseX() & 0x02
+                    | (this.v.getNameTbX() << 10) 
+                    | ((this.v.getCoarseY() >> 2) << 3) 
+                    | (this.v.getCoarseX() >> 2))
+
+                    if(this.v.getCoarseX() & 0x02)
                 break
                 case 4 :
-
+                    this.render.bg_l = ppuRead((this.ctrl.getBgSelection() << 12) 
+					+ (this.render.bg_id << 4) 
+					+ (this.v.getFineY()) + 0)
                 break
                 case 6 :
-
+                    this.render.bg_h = ppuRead((this.ctrl.getBgSelection() << 12) 
+                    + (this.render.bg_id << 4) 
+                    + (this.v.getFineY()) + 8)
                 break
                 case 7 :
                     this.incScrollX()
@@ -480,19 +488,14 @@ class PPU {
             }
         }
         if(cycle == 256){
-
+            this.incScrollY()
         }
         if(cycle == 257){
-
+            this.reloadBgShifter()
         }
-        if(cycle == 338){
-
+        if(cycle == 338 || cycle == 340){
+            this.render.bg_id = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
         }
-        if(cycle == 340){
-
-        }
-
-
     }
     scanlinePost(){
         /** do nothing TODO: Render it! */

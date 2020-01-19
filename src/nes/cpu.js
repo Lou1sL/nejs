@@ -369,25 +369,25 @@ class CPU{
 
         else if(mnem == 'BRK') { this.cc(1); this.BRK() }
 
-        else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at [0x'+this.dbgHexStr16(this.getPC())+']') }
+        else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
 
         return cycle
     }
-    
+
     DEBUG_LOG() {
-        process.stdout.cursorTo(0,0)
+        //process.stdout.cursorTo(0,0)
         var op = OPCODE[this.busR(this.getPC())]
-        process.stdout.write(' ║ PC═════╗ A════╗ X════╗ Y════╗ S════╗ N V - B D I Z C ═╗ ╔ OPCODE════╗\n')
+        //process.stdout.write(' ║ PC═════╗ A════╗ X════╗ Y════╗ S════╗ N V - B D I Z C ═╗ ╔ OPCODE════╗\n')
         process.stdout.write(
             ' ║ ' + this.dbgHexStr16(this.getPC()) + ' ║ ' + this.dbgHexStr(this.acc) + 
             ' ║ ' + this.dbgHexStr(this.x)         + ' ║ ' + this.dbgHexStr(this.y) + 
             ' ║ ' + this.dbgHexStr(this.sp)        + ' ║ ' + this.dbgBinStr(this.sr)+ 
             ' ║ ' + '║ '+op.mnem+'['+op.addressing+'] ║'+ '\n')
-        process.stdout.write(' ╚════════╩══════╩══════╩══════╩══════╩══════════════════╝ ╚═══════════╝\n')
+        //process.stdout.write(' ╚════════╩══════╩══════╩══════╩══════╩══════════════════╝ ╚═══════════╝\n')
     }
     dbgHexStr16(val){ return '0x'+val.toString(16).toUpperCase().padStart(4, '0')                          } 
     dbgHexStr(val)  { return '0x'+val.toString(16).toUpperCase().padStart(2, '0')                          }
     dbgBinStr(val)  { return (val & 0xFF).toString(2).padStart(8, '0').replace(/1/g,'😊 ').replace(/0/g,'😭 ') }
 }
 
-export default CPU
+module.exports = CPU
