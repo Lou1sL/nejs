@@ -144,7 +144,7 @@ class CPUBus {
             return this.ram[addr%CPU_RAM_SIZE]
         }
         else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < 0x4000)){
-            switch((addr-CPU_RAM_ADDR_SIZE) % 0x08){
+            switch((addr-CPU_RAM_ADDR_SIZE) % 0x08 + 0x2000){
                 case CPU_MEM_IO_PPU_CTRL: return 0
                 case CPU_MEM_IO_PPU_MASK: return 0
                 case CPU_MEM_IO_PPU_STAT: return this.ppu.REG_STAT_R()
@@ -173,7 +173,7 @@ class CPUBus {
             this.ram[addr%CPU_RAM_SIZE] = data
         }
         else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < 0x4000)){
-            switch((addr-CPU_RAM_ADDR_SIZE) % 0x08){
+            switch((addr-CPU_RAM_ADDR_SIZE) % 0x08 + 0x2000){
                 case CPU_MEM_IO_PPU_CTRL: this.ppu.REG_CTRL_W(data); break
                 case CPU_MEM_IO_PPU_MASK: this.ppu.REG_MASK_W(data); break
                 case CPU_MEM_IO_PPU_STAT: break
@@ -205,7 +205,7 @@ class PPUBus {
         this.mirr = MIRRORING.VERTICAL
     }
     bindCPU      (cpu) { this.cpu = cpu       }
-    nmi          ()    { this.cpu.nmi()       }
+    nmi          ()    { this.cpu.NMI()       }
     setMirroring (val) { this.mirr = val      }
     bindCHRROM   (val) { this.chrrom = val    }
 
@@ -219,7 +219,7 @@ class PPUBus {
         }
         else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){
             if ((addr & 0x13) == 0x10) addr &= ~0x10
-            return this.plet[addr & 0x1F] & (mask.gray ? 0x30 : 0xFF) //TODO: mask gray
+            return this.plet[addr & 0x1F]// & (mask.gray ? 0x30 : 0xFF) //TODO: mask gray
         }
         return 0
     }

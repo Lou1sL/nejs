@@ -224,15 +224,16 @@ class CPU{
     STEP(){
         var opcode = this.fetchOpcode()
         var addr = this.fetchAddr(opcode)
+        var data = addr == null ? null : this.busR(addr)
         var mnem = opcode['mnem']
         var cycle = opcode['cycle']
 
              if(mnem == 'NOP') { /** ^_^ */ }
-        else if(mnem == 'LDA') { this.acc = this.busR(addr); this.srNZ(this.acc) }
+        else if(mnem == 'LDA') { this.acc = data; this.srNZ(this.acc) }
         else if(mnem == 'STA') { this.busW(addr,this.acc) }
-        else if(mnem == 'LDX') { this.x = this.busR(addr); this.srNZ(this.x) }
+        else if(mnem == 'LDX') { this.x = data; this.srNZ(this.x) }
         else if(mnem == 'STX') { this.busW(addr,this.x) }
-        else if(mnem == 'LDY') { this.y = this.busR(addr); this.srNZ(this.y) }
+        else if(mnem == 'LDY') { this.y = data; this.srNZ(this.y) }
         else if(mnem == 'STY') { this.busW(addr,this.y) }
 
         else if(mnem == 'TAX') { this.x = this.acc; this.srNZ(this.x) }
@@ -243,22 +244,21 @@ class CPU{
         else if(mnem == 'TSX') { this.x = this.sp; this.srNZ(this.x) }
 
         else if(mnem == 'ADC') {
-            var n = this.busR(addr)
-            var res = (this.acc + n + ((this.sr & C) != 0 ? 1 : 0))
+            var res = (this.acc + data + ((this.sr & C) != 0 ? 1 : 0))
             if((this.sr & D) != 0){
-                if(((this.acc & 0x0F) + (n & 0x0F) + ((this.sr & C) != 0 ? 1 : 0)) > 9) res += 6
+                if(((this.acc & 0x0F) + (data & 0x0F) + ((this.sr & C) != 0 ? 1 : 0)) > 9) res += 6
                 this.srNZ(res & 0xFF)
-                this.srV(n,this.acc,res)
+                this.srV(data,this.acc,res)
                 if(res > 0x99) res += 0x60
                 this.srC(res > 0x99)
             } else { //todo:fix
                 this.srNZC(res & 0xFF,res > 0xFF)
-                this.srV(n,this.acc,res)
+                this.srV(data,this.acc,res)
             }
             this.acc = res & 0xFF
         }
         else if(mnem == 'SBC') {
-            var n = 0xFF - this.busR(addr)
+            var n = 0xFF - data
             var res = (this.acc + n + ((this.sr & C) != 0 ? 1 : 0))
             this.srNZ(res & 0xFF)
             this.srV(n,this.acc,res)
@@ -271,31 +271,29 @@ class CPU{
         }
 
         else if(mnem == 'BIT') {
-            var v = this.busR(addr)
-            var res = this.acc & v; this.srZ(res)
-            if((v & N) != 0) { this.sr |= N } else { this.sr &= (~N) }
-            if((v & V) != 0) { this.sr |= V } else { this.sr &= (~V) }
+            var res = this.acc & data; this.srZ(res)
+            if((data & N) != 0) { this.sr |= N } else { this.sr &= (~N) }
+            if((data & V) != 0) { this.sr |= V } else { this.sr &= (~V) }
         }
-        else if(mnem == 'CMP') { var res = this.acc - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
-        else if(mnem == 'CPX') { var res = this.x   - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
-        else if(mnem == 'CPY') { var res = this.y   - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
+        else if(mnem == 'CMP') { var res = this.acc - data; this.srNZC(res & 0xFF,res >= 0) }
+        else if(mnem == 'CPX') { var res = this.x   - data; this.srNZC(res & 0xFF,res >= 0) }
+        else if(mnem == 'CPY') { var res = this.y   - data; this.srNZC(res & 0xFF,res >= 0) }
 
         else if(mnem == 'INX') { this.x = (this.x + 1) & 0xFF; this.srNZ(this.x) }
         else if(mnem == 'INY') { this.y = (this.y + 1) & 0xFF; this.srNZ(this.y) }
-        else if(mnem == 'INC') { var v = (this.busR(addr) + 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
+        else if(mnem == 'INC') { var v = (data + 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
 
         else if(mnem == 'DEX') { this.x = (this.x - 1) & 0xFF; this.srNZ(this.x) }
         else if(mnem == 'DEY') { this.y = (this.y - 1) & 0xFF; this.srNZ(this.y) }
-        else if(mnem == 'DEC') { var v = (this.busR(addr) - 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
+        else if(mnem == 'DEC') { var v = (data - 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
 
-        else if(mnem == 'AND') { this.acc &= this.busR(addr); this.srNZ(this.acc) }
-        else if(mnem == 'ORA') { this.acc |= this.busR(addr); this.srNZ(this.acc) }
-        else if(mnem == 'EOR') { this.acc ^= this.busR(addr); this.srNZ(this.acc) }
+        else if(mnem == 'AND') { this.acc &= data; this.srNZ(this.acc) }
+        else if(mnem == 'ORA') { this.acc |= data; this.srNZ(this.acc) }
+        else if(mnem == 'EOR') { this.acc ^= data; this.srNZ(this.acc) }
 
         else if(mnem == 'ROL' && (opcode['addressing'] != 'ACCU')) {
-            var olv = this.busR(addr)
-            var v = ((olv << 1) | (((this.sr & C) == 0)? 0 : 1)) & 0xFF
-            this.srNZC(v,olv >= 0x80)
+            var v = ((data << 1) | (((this.sr & C) == 0)? 0 : 1)) & 0xFF
+            this.srNZC(v,data >= 0x80)
             this.busW(addr, v)
         }
         else if(mnem == 'ROL' && (opcode['addressing'] == 'ACCU')) {
@@ -303,10 +301,9 @@ class CPU{
             this.srNZC(v,this.acc >= 0x80)
             this.acc = v
         }
-        else if(mnem == 'ROR' && (opcode['addressing'] != 'ACCU')) { 
-            var olv = this.busR(addr)
-            var v = (olv >> 1) | ((((this.sr & C) == 0)? 0 : 1) << 7)
-            this.srNZC(v,(olv & 1) != 0)
+        else if(mnem == 'ROR' && (opcode['addressing'] != 'ACCU')) {
+            var v = (data >> 1) | ((((this.sr & C) == 0)? 0 : 1) << 7)
+            this.srNZC(v,(data & 1) != 0)
             this.busW(addr,v)
         }
         else if(mnem == 'ROR' && (opcode['addressing'] == 'ACCU')) { 
@@ -315,10 +312,9 @@ class CPU{
             this.acc = v
         }
 
-        else if(mnem == 'ASL' && (opcode['addressing'] != 'ACCU')) { 
-            var olv = this.busR(addr)
-            var v = (olv << 1) & 0xFF
-            this.srNZC(v,olv >= 0x80)
+        else if(mnem == 'ASL' && (opcode['addressing'] != 'ACCU')) {
+            var v = (data << 1) & 0xFF
+            this.srNZC(v,data >= 0x80)
             this.busW(addr, v)
         }
         else if(mnem == 'ASL' && (opcode['addressing'] == 'ACCU')) {
@@ -327,10 +323,9 @@ class CPU{
             this.acc = v
         }
 
-        else if(mnem == 'LSR' && (opcode['addressing'] != 'ACCU')) { 
-            var olv = this.busR(addr)
-            var v = (olv >> 1) & 0xFF
-            this.srNZC(v,(olv & 1) != 0)
+        else if(mnem == 'LSR' && (opcode['addressing'] != 'ACCU')) {
+            var v = (data >> 1) & 0xFF
+            this.srNZC(v,(data & 1) != 0)
             this.busW(addr,v)
         }
         else if(mnem == 'LSR' && (opcode['addressing'] == 'ACCU')) { 
@@ -371,23 +366,22 @@ class CPU{
 
         else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
 
-        return cycle
+        return { pc:this.getPC(), mnem, addr, data, cycle }
     }
 
-    DEBUG_LOG() {
-        //process.stdout.cursorTo(0,0)
+    printStatus() {
+        process.stdout.cursorTo(0,0)
         var op = OPCODE[this.busR(this.getPC())]
-        //process.stdout.write(' ║ PC═════╗ A════╗ X════╗ Y════╗ S════╗ N V - B D I Z C ═╗ ╔ OPCODE════╗\n')
+        process.stdout.write(' ║ PC═════╗ A════╗ X════╗ Y════╗ S════╗ N V - B D I Z C ═╗ ╔ OPCODE════╗\n')
         process.stdout.write(
-            ' ║ ' + this.dbgHexStr16(this.getPC()) + ' ║ ' + this.dbgHexStr(this.acc) + 
+            ' ║ ' + this.dbgHexStr(this.getPC(),4) + ' ║ ' + this.dbgHexStr(this.acc) + 
             ' ║ ' + this.dbgHexStr(this.x)         + ' ║ ' + this.dbgHexStr(this.y) + 
             ' ║ ' + this.dbgHexStr(this.sp)        + ' ║ ' + this.dbgBinStr(this.sr)+ 
             ' ║ ' + '║ '+op.mnem+'['+op.addressing+'] ║'+ '\n')
-        //process.stdout.write(' ╚════════╩══════╩══════╩══════╩══════╩══════════════════╝ ╚═══════════╝\n')
+        process.stdout.write(' ╚════════╩══════╩══════╩══════╩══════╩══════════════════╝ ╚═══════════╝\n')
     }
-    dbgHexStr16(val){ return '0x'+val.toString(16).toUpperCase().padStart(4, '0')                          } 
-    dbgHexStr(val)  { return '0x'+val.toString(16).toUpperCase().padStart(2, '0')                          }
-    dbgBinStr(val)  { return (val & 0xFF).toString(2).padStart(8, '0').replace(/1/g,'😊 ').replace(/0/g,'😭 ') }
+    dbgHexStr(val,pad=2) { return '0x'+val.toString(16).toUpperCase().padStart(pad, '0') }
+    dbgBinStr(val)       { return (val & 0xFF).toString(2).padStart(8, '0').replace(/1/g,'😊 ').replace(/0/g,'😭 ') }
 }
 
 module.exports = CPU

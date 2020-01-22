@@ -17,7 +17,7 @@ class Mapper {
         var chrIndex = prgIndex + prgSize
 
         var prg      = rom.slice(prgIndex,prgIndex + prgSize)
-        var chr      = rom.slice(chrIndex,chrIndex + chrSize)//TODO:double it for 32K
+        var chr      = rom.slice(chrIndex,chrIndex + chrSize)
         var wram     = new Uint8Array(wramSize)
         console.log(
             'ROM Info: \n' + 
@@ -35,43 +35,6 @@ class Mapper {
         
 
         return {prg, chr, wram, isHori, useBat, is4Scr, mapperNo }
-    }
-
-    
-    readPRG(addr){
-        if (addr >= 0x8000) return this.prg[this.prgMap[(addr - 0x8000) / 0x2000] + ((addr - 0x8000) % 0x2000)]
-        else return this.prgRam[addr - 0x6000]
-    }
-    readCHR(addr){
-        return this.chr[this.chrMap[addr / 0x400] + (addr % 0x400)]
-    }
-    mapPRG(slot,bank,pageKBs){
-        if (bank < 0)
-            bank = (prgSize / (0x400*pageKBs)) + bank
-        for (var i = 0; i < (pageKBs/8); i++)
-            this.prgMap[(pageKBs/8) * slot + i] = (pageKBs*0x400*bank + 0x2000*i) % this.prgSize
-    }
-    mapCHR(slot,bank,pageKBs){
-        for (var i = 0; i < pageKBs; i++)
-            this.chrMap[pageKBs*slot + i] = (pageKBs*0x400*bank + 0x400*i) % this.chrSize
-    }
-
-
-
-    readPRG(addr){
-        if (addr >= 0x8000) return this.prg[this.prgMap[(addr - 0x8000) / 0x2000] + ((addr - 0x8000) % 0x2000)]
-        else return this.prgRam[addr - 0x6000]
-    }
-    readCHR(addr){
-        return this.chr[this.chrMap[addr / 0x400] + (addr % 0x400)]
-    }
-    mapPRG(){
-        for (var i = 0; i < 4; i++)
-            this.prgMap[i] = (0x2000*i) % this.prgSize
-    }
-    mapCHR(){
-        for (var i = 0; i < 8; i++)
-            this.chrMap[i] = (0x400*i) % this.chrSize
     }
 }
 

@@ -15,12 +15,12 @@ var cpu_test = new CPU(new CPU_BUS_TEST())
 cpu_test.pc(0x0400)
 while(true){
     cpu_test.STEP()
-    //cpu_test.DEBUG_LOG()
+    //cpu_test.printStatus()
     if(cpu_test.getPC() == 0x32E8) { console.log('CPU test passed.(no decimal)');break }
 }
 //------------------------
 
-var rom = fs.readFileSync('./DonkeyKong.nes', null)
+var rom = fs.readFileSync('./smb.nes', null)
 var mapper = new Mapper(rom)
 
 var cpubus = new CPUBus()
@@ -39,11 +39,21 @@ ppubus.bindCHRROM(mapper.chr)
 
 cpu.RST()
 ppu.RST()
-cpu.DEBUG_LOG()
-var a = 0
-while(++a<20){
-    cpu.STEP()
-    cpu.DEBUG_LOG()
+
+function f(){
+    cpu.STEP();ppu.STEP();ppu.STEP();ppu.STEP()
+    //setTimeout(f, 0)
+    f()
+}
+//f()
+
+fs.writeFileSync('./cpu.log','')
+while(1){
+    var cpures = cpu.STEP()
+    fs.appendFileSync('./cpu.log',dbgHexStr(cpures.pc,4)+' '+cpures.mnem+' '+dbgHexStr(cpures.addr,4)+' '+dbgHexStr(cpures.data)+'\n')
+    ppu.STEP()
+    ppu.STEP()
+    ppu.STEP()
 }
 
 const WIDTH = 256
@@ -52,7 +62,7 @@ const HEIGHT = 240
 var canvas = createCanvas(WIDTH, HEIGHT)
 var ctx = canvas.getContext('2d')
 
-
+function dbgHexStr(val,pad=2)  { return val!=null?'0x'+val.toString(16).toUpperCase().padStart(pad, '0'):'' }
 
 
 
