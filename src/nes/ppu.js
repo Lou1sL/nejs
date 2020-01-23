@@ -252,8 +252,8 @@ class RenderInfo {
         for(var i=0;i<SPRITE_SCANLINE_MAX;i++)
             this.spriteScanline[i] = new Sprite()
         this.spriteCount = 0
-        this.sp_s_ptl_l = new Uint8Array(SPRITE_SCANLINE_MAX)
-        this.sp_s_ptl_h = new Uint8Array(SPRITE_SCANLINE_MAX)
+        this.sp_s_ptn_l = new Uint8Array(SPRITE_SCANLINE_MAX)
+        this.sp_s_ptn_h = new Uint8Array(SPRITE_SCANLINE_MAX)
 
         this.spriteZeroHitPossible   = false
 	    this.spriteZeroBeingRendered = false
@@ -273,15 +273,11 @@ class RenderInfo {
     resetSpriteScanline(){
         for(var i=0;i<SPRITE_SCANLINE_MAX;i++){
             this.spriteScanline[i].reset()
-            this.sp_s_ptl_l[i] = 0
-            this.sp_s_ptl_h[i] = 0
+            this.sp_s_ptn_l[i] = 0
+            this.sp_s_ptn_h[i] = 0
         }
         this.spriteCount = 0
         this.spriteZeroHitPossible = false
-    }
-    renderSprite(){
-        this.resetSpriteScanline()
-
     }
 }
 
@@ -449,8 +445,8 @@ class PPU {
                     if (x > 0)this.render.spriteScanline[i].setX(x-1)
                     else
                     {
-                        this.render.sp_s_ptl_l[i] <<= 1
-                        this.render.sp_s_ptl_h[i] <<= 1
+                        this.render.sp_s_ptn_l[i] <<= 1
+                        this.render.sp_s_ptn_h[i] <<= 1
                     }
                 }
             }
@@ -468,8 +464,8 @@ class PPU {
         var cycle = this.pixelIter.getCycle()
         if(cycle == 1){
             this.stat.clrAll()
-            this.render.sp_s_ptl_h = new Uint8Array(8)
-            this.render.sp_s_ptl_l = new Uint8Array(8)
+            this.render.sp_s_ptn_h = new Uint8Array(8)
+            this.render.sp_s_ptn_l = new Uint8Array(8)
         }
         if(cycle >= 280 && cycle <= 304) this.transferAddrY()
     }
@@ -525,18 +521,54 @@ class PPU {
             this.render.bg_id = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
         }
         if(cycle == 340){
+
             for(var i=0;i<this.render.spriteCount;i++){
+
                 var sp_ptn_data_l,sp_ptn_data_h
                 var sp_ptn_addr_l,sp_ptn_addr_h
 
-                if(this.ctrl.is8x16()){
-
+                var is8x16 = this.ctrl.is8x16()
+                var ptn = this.render.spriteScanline[i].getAttr() & 0x80 != 0
+                
+                var diff = this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()
+                if(is8x16){
+                    if(ptn){
+                        sp_ptn_addr_l = 
+                            ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
+                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?1:0)) <<  4)|
+                            (7 - diff & 0x07)
+                    }else{
+                        sp_ptn_addr_l = 
+                            ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
+                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?0:1)) <<  4)|
+                            (diff & 0x07)
+                    }
                 }else{
-                    sp_ptn_addr_l = 
-                        (this.ctrl.getSpSel() << 12) |
-                        (this.render.spriteScanline[i].getTile() << 4) |
-                        (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY())
+                    if(ptn){
+                        sp_ptn_addr_l = 
+                            (this.ctrl.getSpSel() << 12) |
+                            (this.render.spriteScanline[i].getTile() << 4) |
+                            (7 - diff)
+                    }else{
+                        sp_ptn_addr_l = 
+                            (this.ctrl.getSpSel() << 12) |
+                            (this.render.spriteScanline[i].getTile() << 4) |
+                            (diff)
+                    }
                 }
+
+                sp_ptn_addr_h = sp_ptn_addr_l + 8
+
+                sp_ptn_data_l = this.busRAddr(sp_ptn_addr_l)
+                sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
+
+                if((this.render.spriteScanline[i].getAttr() & 0x40) != 0){
+                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString().split("").reverse().join(""))
+                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString().split("").reverse().join(""))
+                }
+
+                this.render.sp_s_ptn_l[i] = sp_ptn_data_l
+                this.render.sp_s_ptn_h[i] = sp_ptn_data_h
             }
         }
     }
@@ -571,12 +603,50 @@ class PPU {
 
     STEP(dbg=false){
         var state = this.pixelIter.getState()
+
         switch(state.scanline){
             case SCANLINE_STATE.PRERENDER: this.scanlinePre(); this.scanlineRender(); break
             case SCANLINE_STATE.VISIBLE: this.scanlineRender(); this.scanlineVisible(); break
             case SCANLINE_STATE.POSTRENDER: this.scanlinePost(); break
             case SCANLINE_STATE.VBLANK: this.scanlineNmi(); break
         }
+
+        var bg_pixel = 0
+        var bg_palet = 0
+        if(this.mask.isRenderBg()){
+            var bit_mux = 0x8000 >> this.x.get()
+            var pl = (this.render.bg_s_ptn_l & bit_mux) > 0 ? 1 : 0
+            var ph = (this.render.bg_s_ptn_h & bit_mux) > 0 ? 1 : 0
+            bg_pixel = (ph << 1) | pl
+
+            var bg_pall = (this.render.bg_s_atr_l & bit_mux) > 0 ? 1 : 0
+            var bg_palh = (this.render.bg_s_atr_h & bit_mux) > 0 ? 1 : 0
+            bg_palet = (bg_palh << 1) | bg_pall
+        }
+
+        var sp_pixel = 0
+        var sp_palet = 0
+        var sp_prior = 0
+        if(this.mask.isRenderSprite()){
+            this.render.spriteZeroBeingRendered = false
+            for(var i=0;i<this.render.spriteCount;i++){
+                var pl = (this.render.sp_s_ptn_l[i] & 0x80) > 0 ? 1 : 0
+                var ph = (this.render.sp_s_ptn_h[i] & 0x80) > 0 ? 1 : 0
+                sp_pixel = (ph << 1) | pl
+
+                sp_palet = (this.render.spriteScanline[i].getAttr() & 0x03) + 0x04
+                sp_prior = (this.render.spriteScanline[i].getAttr() & 0x20) == 0 ? 1 : 0
+
+                if(sp_pixel!=0){
+                    if(i==0)this.render.spriteZeroBeingRendered = true
+                    break
+                }
+            }
+        }
+
+        
+
+
         this.pixelIter.iterate()
 
 
