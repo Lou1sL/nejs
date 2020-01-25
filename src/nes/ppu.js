@@ -52,19 +52,6 @@ const ADDR_NX = 0b0000010000000000 // nametable X select
 const ADDR_Y  = 0b0000001111100000 // coarse Y scroll
 const ADDR_X  = 0b0000000000011111 // coarse X scroll
 
-const PALETTE = [
-    0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
-    0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
-    0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
-    0xAC7C00, 0x00B800, 0x00A800, 0x00A844, 0x008888, 0x000000, 0x000000, 0x000000,
-    0xF8F8F8, 0x3CBCFC, 0x6888FC, 0x9878F8, 0xF878F8, 0xF85898, 0xF87858, 0xFCA044,
-    0xF8B800, 0xB8F818, 0x58D854, 0x58F898, 0x00E8D8, 0x787878, 0x000000, 0x000000,
-    0xFCFCFC, 0xA4E4FC, 0xB8B8F8, 0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8,
-    0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000 ]
-
-
-
-
 class Sprite {
     constructor()    { this.value = new Uint8Array(SPRITE_DATA_SIZE) }
     setArr     (val) { this.value = val                              }
@@ -178,6 +165,9 @@ class Mask {
     isRenderBg ()    { return (this.value & MASK_b) != 0 }
     isRenderSp ()    { return (this.value & MASK_s) != 0 }
 
+    isRenderBgL()    { return (this.value & MASK_m) != 0 }
+    isRenderSpL()    { return (this.value & MASK_M) != 0 }
+
     setRenderBg()    { this.value |=  MASK_b }
     clrRenderBg()    { this.value &= ~MASK_b } 
 }
@@ -282,7 +272,7 @@ class RenderInfo {
 }
 
 class PPU {
-    constructor(bus){
+    constructor(bus,screen){
         //Internal RAM
         this.oam  = new OAM() //For sprite data(64*4(x,y,color,tile))
 
@@ -297,9 +287,12 @@ class PPU {
         this.reg_buffer = 0x00
 
         this.bus = bus
+        this.screen = screen
 
         this.pixelIter = new RenderIterator()
         this.render = new RenderInfo()
+
+        this.frame = 0
     }
     busR    ()          { return this.bus.r(this.v.get()) }
     busW    (data)      { this.bus.w(this.v.get(),data)   }
@@ -437,7 +430,7 @@ class PPU {
             this.render.bg_s_atr_l <<= 1
             this.render.bg_s_atr_h <<= 1
         }
-        if(this.mask.isRenderSprite()){
+        if(this.mask.isRenderSp()){
             var cycle = this.pixelIter.getCycle()
             if(cycle>0 && cycle<258){
                 for(var i=0;i<this.render.spriteCount;i++){
@@ -592,6 +585,11 @@ class PPU {
     }
     scanlinePost(){
         /** do nothing */
+        if(this.pixelIter.getCycle() == 1){
+            this.screen.updateCanvas()
+            console.log('F:'+this.frame++)
+        }
+        
     }
     scanlineNmi(){
         if(this.pixelIter.getCycle() == 1){
@@ -610,7 +608,7 @@ class PPU {
             case SCANLINE_STATE.POSTRENDER: this.scanlinePost(); break
             case SCANLINE_STATE.VBLANK: this.scanlineNmi(); break
         }
-
+        
         var bg_pixel = 0
         var bg_palet = 0
         if(this.mask.isRenderBg()){
@@ -627,7 +625,7 @@ class PPU {
         var sp_pixel = 0
         var sp_palet = 0
         var sp_prior = 0
-        if(this.mask.isRenderSprite()){
+        if(this.mask.isRenderSp()){
             this.render.spriteZeroBeingRendered = false
             for(var i=0;i<this.render.spriteCount;i++){
                 var pl = (this.render.sp_s_ptn_l[i] & 0x80) > 0 ? 1 : 0
@@ -644,13 +642,34 @@ class PPU {
             }
         }
 
-        
+        //-----
+        var cycle = this.pixelIter.getCycle()
+        var scanline = this.pixelIter.getScanline()
 
+        var pixel = bg_pixel | sp_pixel
+        var palet = bg_palet | sp_palet
+
+        if(bg_pixel>0 && sp_pixel>0){
+            pixel = sp_prior>0 ? sp_pixel:bg_pixel
+            palet = sp_prior>0 ? sp_palet:bg_palet
+            if(this.render.spriteZeroHitPossible && this.render.spriteZeroBeingRendered){
+                if(this.mask.isRenderBg() && this.mask.isRenderSp()){
+                    if(!(this.mask.isRenderBgL() || this.mask.isRenderSpL())){
+                        if(cycle>=9 && cycle<258)this.stat.setHit()
+                    }else{
+                        if(cycle>=1 && cycle<258)this.stat.setHit()
+                    }
+                }
+            }
+        }
+
+        this.screen.updatePixelPicker(cycle-1,scanline,this.busRAddr(0x3F00+(palet<<2)+pixel) & 0x3F)
 
         this.pixelIter.iterate()
 
 
-        if(dbg)console.log(this.pixelIter.getScanline()+' '+this.pixelIter.getCycle())
+        if(dbg)
+            console.log(this.pixelIter.getScanline()+' '+this.pixelIter.getCycle())
     }
 
 
@@ -662,4 +681,4 @@ class PPU {
     
 }
 
-module.exports = PPU
+export default PPU

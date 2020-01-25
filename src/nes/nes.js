@@ -1,13 +1,17 @@
-const fs                          = require('fs')
+//const fs                          = require('fs')
 const { createCanvas, loadImage } = require('canvas')
 
-const Mapper = require('./mapper')
-const { CPUBus, PPUBus, MIRRORING } = require('./bus')
-const CPU    = require('./cpu')
-const PPU    = require('./ppu')
-const APU    = require('./apu')
+import Screen from './screen'
+import Mapper from './mapper'
+import { CPUBus, PPUBus, MIRRORING } from './bus'
+import CPU from './cpu'
+import PPU from './ppu'
+import APU from './apu'
+
+import fs from 'fs'
 
 
+/**
 //--CPU Test program------
 var rom_test = fs.readFileSync('./6502_functional_test.bin', null)
 function CPU_BUS_TEST(){this.r=function(addr){return rom_test[addr]};this.w=function(addr,data){rom_test[addr]=data}}
@@ -19,34 +23,9 @@ while(true){
     if(cpu_test.getPC() == 0x32E8) { console.log('CPU test passed.(no decimal)');break }
 }
 //------------------------
+ */
 
-var rom = fs.readFileSync('./smb.nes', null)
-var mapper = new Mapper(rom)
-
-var cpubus = new CPUBus()
-var ppubus = new PPUBus()
-
-var cpu = new CPU(cpubus)
-var ppu = new PPU(ppubus)
-
-cpubus.bindPPU(ppu)
-cpubus.bindPRGROM(mapper.prg)
-cpubus.bindWRAM(mapper.wram)
-
-ppubus.bindCPU(cpu)
-ppubus.setMirroring(mapper.isHori ? MIRRORING.HORIZONTAL : MIRRORING.VERTICAL)
-ppubus.bindCHRROM(mapper.chr)
-
-cpu.RST()
-ppu.RST()
-
-function f(){
-    cpu.STEP();ppu.STEP();ppu.STEP();ppu.STEP()
-    //setTimeout(f, 0)
-    f()
-}
-//f()
-
+/**
 fs.writeFileSync('./cpu.log','')
 while(1){
     var cpures = cpu.STEP()
@@ -55,17 +34,54 @@ while(1){
     ppu.STEP()
     ppu.STEP()
 }
-
-const WIDTH = 256
-const HEIGHT = 240
-
-var canvas = createCanvas(WIDTH, HEIGHT)
-var ctx = canvas.getContext('2d')
-
 function dbgHexStr(val,pad=2)  { return val!=null?'0x'+val.toString(16).toUpperCase().padStart(pad, '0'):'' }
+ */
 
 
+class NES {
+    constructor(ctx,rom){
+        this.ctx = ctx
+        this.init(rom)
+    }
+    init(rom){
+        this.mapper = new Mapper(rom)
+        
+        this.screen = new Screen(this.ctx)
 
+        this.cpubus = new CPUBus()
+        this.ppubus = new PPUBus()
+        
+        this.cpu = new CPU(this.cpubus)
+        this.ppu = new PPU(this.ppubus,this.screen)
+        
+        this.cpubus.bindPPU(this.ppu)
+        this.cpubus.bindPRGROM(this.mapper.prg)
+        this.cpubus.bindWRAM(this.mapper.wram)
+        
+        this.ppubus.bindCPU(this.cpu)
+        this.ppubus.setMirroring(this.mapper.isHori ? MIRRORING.HORIZONTAL : MIRRORING.VERTICAL)
+        this.ppubus.bindCHRROM(this.mapper.chr)
 
+        this.rst()
+    }
+    step(){
+        //https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
+        var cycle = 0
+        while(cycle<29780){
+            var cpures = this.cpu.STEP()
+            this.ppu.STEP()
+            this.ppu.STEP()
+            this.ppu.STEP()
+            cycle += cpures.cycle
+        }
+        //console.log(cpures)
+    }
+    rst(){
+        this.cpu.RST()
+        this.ppu.RST()
+    }
+}
+
+export default NES
 
 

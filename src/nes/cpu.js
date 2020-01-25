@@ -384,4 +384,4 @@ class CPU{
     dbgBinStr(val)       { return (val & 0xFF).toString(2).padStart(8, '0').replace(/1/g,'😊 ').replace(/0/g,'😭 ') }
 }
 
-module.exports = CPU
+export default CPU

@@ -241,4 +241,4 @@ class PPUBus {
 var MIRRORING = { VERTICAL:0, HORIZONTAL:1 }
 
 
-module.exports = { CPUBus, PPUBus, MIRRORING }
+export { CPUBus, PPUBus, MIRRORING }

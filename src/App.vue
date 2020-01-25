@@ -1,29 +1,39 @@
 <template>
     <div id="app">
-        <canvas ref="myCanvas" id="canvas" width="800" height="600"></canvas>
+        <input type="file" ref="myFile" @change="selectedFile"><br/>
+        <canvas ref="myCanvas" id="canvas" width="256" height="240"></canvas>
     </div>
 </template>
 
 <script>
 
-import CPU from './nes/cpu'
+import NES from './nes/nes'
 
 export default {
     name: "nejs",
-        data() { return {  } },
-        created() {  },
-        mounted(){
-            var canvas = this.$refs.myCanvas
-            const ctx = canvas.getContext('2d')
-            ctx.clearRect(0,0,canvas.width,canvas.height)
-            ctx.fillStyle = "black"
-            ctx.font="20px Georgia"
-            ctx.fillText('aaa',10,50)
-         },
-        destroyed(){  },
-        methods:{  },
-        computed: {  },
-        render(){  }
+    data() { return {  } },
+    created() {  },
+    mounted(){  },
+    destroyed(){  },
+    methods:{ 
+        selectedFile() {
+            let file = this.$refs.myFile.files[0]
+            let reader = new FileReader()
+            reader.readAsArrayBuffer(file)
+            reader.onload =  evt => { 
+                this.nes = new NES(this.$refs.myCanvas.getContext('2d'),new Uint8Array(evt.target.result))
+                this.step()
+            }
+            reader.onerror = evt => { console.error(evt) }
+        },
+        step(){
+            this.nes.step()
+            setTimeout(()=>{ this.step() }, 1000/30)
+        }
+     },
+    computed: {  },
+    render(){  },
+    beforeDestroy () {  }
 }
 </script>
 

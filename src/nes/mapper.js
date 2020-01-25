@@ -16,7 +16,7 @@ class Mapper {
         var prgIndex = 16 + (hasTrainer?512:0)
         var chrIndex = prgIndex + prgSize
 
-        var prg      = rom.slice(prgIndex,prgIndex + prgSize)
+        var prgData  = rom.slice(prgIndex,prgIndex + prgSize)
         var chr      = rom.slice(chrIndex,chrIndex + chrSize)
         var wram     = new Uint8Array(wramSize)
         console.log(
@@ -33,9 +33,11 @@ class Mapper {
             default : throw('MapperNo not supported yet...')
         }
         
-
+        var prg = new Uint8Array(0x8000)
+        if(rom[4] == 1) { prg.set(prgData); prg.set(prgData,0x4000) }
+        if(rom[4] == 2) { prg.set(prgData) }
         return {prg, chr, wram, isHori, useBat, is4Scr, mapperNo }
     }
 }
 
-module.exports = Mapper
+export default Mapper
