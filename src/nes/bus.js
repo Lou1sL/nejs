@@ -201,7 +201,11 @@ class PPUBus {
     constructor(){
         this.vram = new Uint8Array(PPU_RAM_SIZE)
         this.chrrom =  new Uint8Array(PPU_CHR_SIZE)
-        this.plet = new Uint8Array(PPU_PLT_SIZE)
+        this.plet = //new Uint8Array(PPU_PLT_SIZE)
+        Uint8Array.from([
+            0x09, 0x01, 0x00, 0x01, 0x00, 0x02, 0x02, 0x0d, 0x08, 0x10, 0x08, 0x24, 0x00, 0x00, 0x04, 0x2c,
+            0x09, 0x01, 0x34, 0x03, 0x00, 0x04, 0x00, 0x14, 0x08, 0x3a, 0x00, 0x02, 0x00, 0x20, 0x2c, 0x08,
+          ])
         this.mirr = MIRRORING.VERTICAL
     }
     bindCPU      (cpu) { this.cpu = cpu       }
@@ -212,9 +216,20 @@ class PPUBus {
     r(addr){
         if(addr >= 0 && addr < PPU_CHR_SIZE) return this.chrrom[addr]
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
+            addr &= 0x0FFF
             switch(this.mirr){
-                case MIRRORING.VERTICAL: return this.vram[addr % PPU_RAM_SIZE]
-                case MIRRORING.HORIZONTAL: return this.vram[((addr / 2) & (PPU_RAM_SIZE / 2)) + (addr % (PPU_RAM_SIZE / 2))]
+                case MIRRORING.VERTICAL:
+                    if (addr >= 0x0000 && addr <= 0x03FF) return this.vram[addr & 0x03FF]
+			        if (addr >= 0x0400 && addr <= 0x07FF) return this.vram[(addr & 0x03FF) + 0x0400]
+			        if (addr >= 0x0800 && addr <= 0x0BFF) return this.vram[addr & 0x03FF]
+			        if (addr >= 0x0C00 && addr <= 0x0FFF) return this.vram[(addr & 0x03FF) + 0x0400]
+                break
+                case MIRRORING.HORIZONTAL:
+                    if (addr >= 0x0000 && addr <= 0x03FF) return this.vram[addr & 0x03FF]
+			        if (addr >= 0x0400 && addr <= 0x07FF) return this.vram[addr & 0x03FF]
+			        if (addr >= 0x0800 && addr <= 0x0BFF) return this.vram[(addr & 0x03FF) + 0x0400]
+			        if (addr >= 0x0C00 && addr <= 0x0FFF) return this.vram[(addr & 0x03FF) + 0x0400]
+                break
             }
         }
         else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){
@@ -226,9 +241,20 @@ class PPUBus {
     w(addr,data){
         if(addr >= 0 && addr < PPU_CHR_SIZE) this.chrrom[addr] = data
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
+            addr &= 0x0FFF
             switch(this.mirr){
-                case MIRRORING.VERTICAL: this.vram[addr % PPU_RAM_SIZE] = data; break
-                case MIRRORING.HORIZONTAL: this.vram[((addr / 2) & (PPU_RAM_SIZE / 2)) + (addr % (PPU_RAM_SIZE / 2))] = data; break
+                case MIRRORING.VERTICAL:
+                    if (addr >= 0x0000 && addr <= 0x03FF) this.vram[addr & 0x03FF] = data
+			        if (addr >= 0x0400 && addr <= 0x07FF) this.vram[(addr & 0x03FF) + 0x0400] = data
+			        if (addr >= 0x0800 && addr <= 0x0BFF) this.vram[addr & 0x03FF] = data
+			        if (addr >= 0x0C00 && addr <= 0x0FFF) this.vram[(addr & 0x03FF) + 0x0400] = data
+                break
+                case MIRRORING.HORIZONTAL:
+                    if (addr >= 0x0000 && addr <= 0x03FF) this.vram[addr & 0x03FF] = data
+			        if (addr >= 0x0400 && addr <= 0x07FF) this.vram[addr & 0x03FF] = data
+			        if (addr >= 0x0800 && addr <= 0x0BFF) this.vram[(addr & 0x03FF) + 0x0400] = data
+			        if (addr >= 0x0C00 && addr <= 0x0FFF) this.vram[(addr & 0x03FF) + 0x0400] = data
+                break
             }
         }
         else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){

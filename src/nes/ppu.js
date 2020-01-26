@@ -108,11 +108,11 @@ class Addr {
     get        ()    { return this.value            }
     set        (val) { this.value = val & ADDR_BITS }
 
-    getCoarseX ()    { return (this.value & ADDR_X)  >>  0 }
-    getCoarseY ()    { return (this.value & ADDR_Y)  >>  5 }
-    getNameTbX ()    { return (this.value & ADDR_NX) >> 10 }
-    getNameTbY ()    { return (this.value & ADDR_NY) >> 11 }
-    getFineY   ()    { return (this.value & ADDR_y)  >> 12 }
+    getCoarseX ()    { return (this.value & ADDR_X)  >>>  0 }
+    getCoarseY ()    { return (this.value & ADDR_Y)  >>>  5 }
+    getNameTbX ()    { return (this.value & ADDR_NX) >>> 10 }
+    getNameTbY ()    { return (this.value & ADDR_NY) >>> 11 }
+    getFineY   ()    { return (this.value & ADDR_y)  >>> 12 }
     
     setCoarseX (val) { this.value &= ~ADDR_X;  this.value |= ((val & 0b11111) <<  0) }
     setCoarseY (val) { this.value &= ~ADDR_Y;  this.value |= ((val & 0b11111) <<  5) }
@@ -140,6 +140,8 @@ class Ctrl {
 
     isVBlank   ()    { return (this.value & CTRL_V) != 0 }
     is8x16     ()    { return (this.value & CTRL_H) != 0 }
+    isBgSel    ()    { return (this.value & CTRL_B) != 0 }
+    isSpSel    ()    { return (this.value & CTRL_S) != 0 }
     isInc32    ()    { return (this.value & CTRL_I) != 0 }
 
     setVBlank  ()    { this.value |=  CTRL_V }
@@ -149,9 +151,6 @@ class Ctrl {
     clrVBlank  ()    { this.value &= ~CTRL_V }
     clr8x16    ()    { this.value &= ~CTRL_H }
     clrInc32   ()    { this.value &= ~CTRL_I }
-
-    getBgSel   ()    { return this.value & CTRL_B   }
-    getSpSel   ()    { return this.value & CTRL_S   }
     
     getSpriteH ()    { return this.is8x16()  ? 16:8 }
     getAddrInc ()    { return this.isInc32() ? 32:1 }
@@ -190,8 +189,8 @@ const SCANLINE_STATE = { PRERENDER:0, VISIBLE:1, POSTRENDER:2, VBLANK:3, NOP:-1 
 const    CYCLE_STATE = { IDLE:0, FETCH_TILE:1, SPRITE_EVAL:2, PREFETCH:3, TBFETCH:4  }
 //https://wiki.nesdev.com/w/index.php/PPU_rendering#Cycle_0
 class RenderIterator {
-    constructor()    { this.scanline = 0; this.cycle = 0 }
-    reset      ()    { this.scanline = 0; this.cycle = 0 }
+    constructor()    { this.scanline = 0; this.cycle = 1 }
+    reset      ()    { this.scanline = 0; this.cycle = 1 }
     getScanline()    { return this.scanline              }
     getCycle   ()    { return this.cycle                 }
 
@@ -313,6 +312,7 @@ class PPU {
         this.reg_buffer = 0
         this.pixelIter.reset()
         this.render.reset()
+        this.frame = 0
     }
 
     //0x2002 PPUSTATUS
@@ -353,11 +353,11 @@ class PPU {
     //0x2005 PPUSCROLL (x2)
     REG_SCRL_W (val){
         if(this.w.isOff()){
-            this.t.setCoarseX(val >> 3)
+            this.t.setCoarseX(val >>> 3)
             this.x.set(val)
         }else{
-            this.t.setFineY(val & 0b111)
-            this.t.setCoarseY(val >>  3)
+            this.t.setFineY(val)
+            this.t.setCoarseY(val >>>  3)
         }
         this.w.trigger()
     }
@@ -394,21 +394,20 @@ class PPU {
     incScrollY(){
         if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
         var fy = this.v.getFineY()
-            if(fy == 0b111){
+            if(fy >= 7){
                 this.v.setFineY(0)
                 var cy = this.v.getCoarseY()
-                if(cy == 0x1D){
+                if(cy == 29){
                     this.v.setCoarseY(0)
                     this.v.setNameTbY(~this.v.getNameTbY())
-                }else if (cy == 0x1F)this.v.setCoarseY(0)
-                else this.v.setCoarseY(cy+1)
+                }else if (cy == 31)this.v.setCoarseY(0)
+                else this.v.setCoarseY(this.v.getCoarseY()+1)
             }else this.v.setFineY(fy+1)
     }
     transferAddrX(){
         if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
         this.v.setNameTbX(this.t.getNameTbX())
         this.v.setCoarseX(this.t.getCoarseX())
-
     }
     transferAddrY(){
         if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
@@ -457,20 +456,13 @@ class PPU {
         var cycle = this.pixelIter.getCycle()
         if(cycle == 1){
             this.stat.clrAll()
-            this.render.sp_s_ptn_h = new Uint8Array(8)
-            this.render.sp_s_ptn_l = new Uint8Array(8)
+            this.render.sp_s_ptn_h = new Uint8Array(SPRITE_SCANLINE_MAX)
+            this.render.sp_s_ptn_l = new Uint8Array(SPRITE_SCANLINE_MAX)
         }
         if(cycle >= 280 && cycle <= 304) this.transferAddrY()
     }
     scanlineRender(){
         var cycle = this.pixelIter.getCycle()
-
-        //Sprite
-        switch(cycle){
-            case 1: break
-            case 257: break
-            case 321: break
-        }
 
         //Background
         if ((cycle >= 2 && cycle <= 257) || (cycle >= 321 && cycle <= 337)){
@@ -481,22 +473,24 @@ class PPU {
                     this.render.bg_id = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
                 break
                 case 2 :
-                    this.render.bg_at = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11) 
-                    | (this.v.getNameTbX() << 10) 
-                    | ((this.v.getCoarseY() >> 2) << 3) 
-                    | (this.v.getCoarseX() >> 2))
+                    this.render.bg_at = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11)
+                    | (this.v.getNameTbX() << 10)
+                    | ((this.v.getCoarseY() >>> 2) << 3)
+                    | (this.v.getCoarseX() >>> 2))
 
-                    if(this.v.getCoarseX() & 0x02)
+                    if((this.v.getCoarseY() & 0x02) != 0) this.render.bg_at = this.render.bg_at >>> 4
+                    if((this.v.getCoarseX() & 0x02) != 0) this.render.bg_at = this.render.bg_at >>> 2
+                    this.render.bg_at &= 0x03
                 break
                 case 4 :
-                    this.render.bg_l = this.busRAddr((this.ctrl.getBgSel() << 12) 
+                    this.render.bg_l = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) 
 					+ (this.render.bg_id << 4) 
-					+ (this.v.getFineY()) + 0)
+                    + this.v.getFineY() + 0)
                 break
                 case 6 :
-                    this.render.bg_h = this.busRAddr((this.ctrl.getBgSel() << 12) 
+                    this.render.bg_h = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) 
                     + (this.render.bg_id << 4) 
-                    + (this.v.getFineY()) + 8)
+                    + this.v.getFineY() + 8)
                 break
                 case 7 :
                     this.incScrollX()
@@ -517,11 +511,13 @@ class PPU {
 
             for(var i=0;i<this.render.spriteCount;i++){
 
-                var sp_ptn_data_l,sp_ptn_data_h
-                var sp_ptn_addr_l,sp_ptn_addr_h
+                var sp_ptn_data_l = 0
+                var sp_ptn_data_h = 0
+                var sp_ptn_addr_l = 0
+                var sp_ptn_addr_h = 0
 
                 var is8x16 = this.ctrl.is8x16()
-                var ptn = this.render.spriteScanline[i].getAttr() & 0x80 != 0
+                var ptn = (this.render.spriteScanline[i].getAttr() & 0x80) != 0
                 
                 var diff = this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()
                 if(is8x16){
@@ -539,12 +535,12 @@ class PPU {
                 }else{
                     if(ptn){
                         sp_ptn_addr_l = 
-                            (this.ctrl.getSpSel() << 12) |
+                            ((this.ctrl.isSpSel()?1:0) << 12) |
                             (this.render.spriteScanline[i].getTile() << 4) |
                             (7 - diff)
                     }else{
                         sp_ptn_addr_l = 
-                            (this.ctrl.getSpSel() << 12) |
+                            ((this.ctrl.isSpSel()?1:0) << 12) |
                             (this.render.spriteScanline[i].getTile() << 4) |
                             (diff)
                     }
@@ -556,8 +552,8 @@ class PPU {
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
 
                 if((this.render.spriteScanline[i].getAttr() & 0x40) != 0){
-                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString().split("").reverse().join(""))
-                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString().split("").reverse().join(""))
+                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString(2).split("").reverse().join(""))
+                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString(2).split("").reverse().join(""))
                 }
 
                 this.render.sp_s_ptn_l[i] = sp_ptn_data_l
@@ -612,7 +608,7 @@ class PPU {
         var bg_pixel = 0
         var bg_palet = 0
         if(this.mask.isRenderBg()){
-            var bit_mux = 0x8000 >> this.x.get()
+            var bit_mux = 0x8000 >>> this.x.get()
             var pl = (this.render.bg_s_ptn_l & bit_mux) > 0 ? 1 : 0
             var ph = (this.render.bg_s_ptn_h & bit_mux) > 0 ? 1 : 0
             bg_pixel = (ph << 1) | pl
@@ -649,7 +645,7 @@ class PPU {
         var pixel = bg_pixel | sp_pixel
         var palet = bg_palet | sp_palet
 
-        if(bg_pixel>0 && sp_pixel>0){
+        if((bg_pixel!=0) && (sp_pixel!=0)){
             pixel = sp_prior>0 ? sp_pixel:bg_pixel
             palet = sp_prior>0 ? sp_palet:bg_palet
             if(this.render.spriteZeroHitPossible && this.render.spriteZeroBeingRendered){
@@ -678,7 +674,30 @@ class PPU {
 
 
 
-    
+    getPatternTable(i,plt){
+        for (var nTileY = 0; nTileY < 16; nTileY++){
+            for (var nTileX = 0; nTileX < 16; nTileX++){
+                var nOffset = (nTileY * 256 + nTileX * 16) & 0xFFFF
+                for (var row = 0; row < 8; row++){
+                    var tile_lsb = this.busRAddr(i * 0x1000 + nOffset + row + 0x0000)
+                    var tile_msb = this.busRAddr(i * 0x1000 + nOffset + row + 0x0008)
+                    for (var col = 0; col < 8; col++){
+                        var pixel = (tile_lsb & 0x01) << 1 | (tile_msb & 0x01)
+                        tile_lsb >>= 1; tile_msb >>= 1
+                        sprPatternTable[i].SetPixel(
+                            nTileX * 8 + (7 - col),
+                            nTileY * 8 + row,
+                            GetColourFromPaletteRam(plt, pixel)
+                        )
+                    }
+                }
+            }
+	    }
+	    return sprPatternTable[i]
+    }
+    GetColourFromPaletteRam(palette,pixel){
+        return palScreen[ppuRead(0x3F00 + (palette << 2) + pixel) & 0x3F]
+    }
 }
 
 export default PPU

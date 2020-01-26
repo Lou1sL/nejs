@@ -11,7 +11,7 @@ import NES from './nes/nes'
 
 export default {
     name: "nejs",
-    data() { return {  } },
+    data() { return { isDestory:false } },
     created() {  },
     mounted(){  },
     destroyed(){  },
@@ -28,12 +28,12 @@ export default {
         },
         step(){
             this.nes.step()
-            setTimeout(()=>{ this.step() }, 1000/30)
+            if(!this.isDestory)setTimeout(()=>{ this.step() }, 1000/30) 
         }
      },
     computed: {  },
     render(){  },
-    beforeDestroy () {  }
+    beforeDestroy () { this.isDestory = true }
 }
 </script>
 
