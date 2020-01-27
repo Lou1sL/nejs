@@ -357,7 +357,7 @@ class PPU {
             this.x.set(val)
         }else{
             this.t.setFineY(val)
-            this.t.setCoarseY(val >>>  3)
+            this.t.setCoarseY(val >>> 3)
         }
         this.w.trigger()
     }
@@ -424,10 +424,10 @@ class PPU {
     }
     updateShifter(){
         if(this.mask.isRenderBg()){
-            this.render.bg_s_ptn_l <<= 1
-            this.render.bg_s_ptn_h <<= 1
-            this.render.bg_s_atr_l <<= 1
-            this.render.bg_s_atr_h <<= 1
+            this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l << 1) & 0xFFFF
+            this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h << 1) & 0xFFFF
+            this.render.bg_s_atr_l = (this.render.bg_s_atr_l << 1) & 0x00FF
+            this.render.bg_s_atr_h = (this.render.bg_s_atr_h << 1) & 0x00FF
         }
         if(this.mask.isRenderSp()){
             var cycle = this.pixelIter.getCycle()
@@ -437,8 +437,8 @@ class PPU {
                     if (x > 0)this.render.spriteScanline[i].setX(x-1)
                     else
                     {
-                        this.render.sp_s_ptn_l[i] <<= 1
-                        this.render.sp_s_ptn_h[i] <<= 1
+                        this.render.sp_s_ptn_l[i] = (this.render.sp_s_ptn_l[i] << 1) & 0xFF
+                        this.render.sp_s_ptn_h[i] = (this.render.sp_s_ptn_h[i] << 1) & 0xFF
                     }
                 }
             }
@@ -478,8 +478,8 @@ class PPU {
                     | ((this.v.getCoarseY() >>> 2) << 3)
                     | (this.v.getCoarseX() >>> 2))
 
-                    if((this.v.getCoarseY() & 0x02) != 0) this.render.bg_at = this.render.bg_at >>> 4
-                    if((this.v.getCoarseX() & 0x02) != 0) this.render.bg_at = this.render.bg_at >>> 2
+                    if((this.v.getCoarseY() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 4) & 0xFF
+                    if((this.v.getCoarseX() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 2) & 0xFF
                     this.render.bg_at &= 0x03
                 break
                 case 4 :
@@ -628,8 +628,8 @@ class PPU {
                 var ph = (this.render.sp_s_ptn_h[i] & 0x80) > 0 ? 1 : 0
                 sp_pixel = (ph << 1) | pl
 
-                sp_palet = (this.render.spriteScanline[i].getAttr() & 0x03) + 0x04
-                sp_prior = (this.render.spriteScanline[i].getAttr() & 0x20) == 0 ? 1 : 0
+                sp_palet = ((this.render.spriteScanline[i].getAttr() & 0x03) + 0x04) & 0xFF
+                sp_prior = (this.render.spriteScanline[i].getAttr() & 0x20) == 0
 
                 if(sp_pixel!=0){
                     if(i==0)this.render.spriteZeroBeingRendered = true
@@ -646,8 +646,8 @@ class PPU {
         var palet = bg_palet | sp_palet
 
         if((bg_pixel!=0) && (sp_pixel!=0)){
-            pixel = sp_prior>0 ? sp_pixel:bg_pixel
-            palet = sp_prior>0 ? sp_palet:bg_palet
+            pixel = sp_prior ? sp_pixel:bg_pixel
+            palet = sp_prior ? sp_palet:bg_palet
             if(this.render.spriteZeroHitPossible && this.render.spriteZeroBeingRendered){
                 if(this.mask.isRenderBg() && this.mask.isRenderSp()){
                     if(!(this.mask.isRenderBgL() || this.mask.isRenderSpL())){
@@ -666,37 +666,6 @@ class PPU {
 
         if(dbg)
             console.log(this.pixelIter.getScanline()+' '+this.pixelIter.getCycle())
-    }
-
-
-
-
-
-
-
-    getPatternTable(i,plt){
-        for (var nTileY = 0; nTileY < 16; nTileY++){
-            for (var nTileX = 0; nTileX < 16; nTileX++){
-                var nOffset = (nTileY * 256 + nTileX * 16) & 0xFFFF
-                for (var row = 0; row < 8; row++){
-                    var tile_lsb = this.busRAddr(i * 0x1000 + nOffset + row + 0x0000)
-                    var tile_msb = this.busRAddr(i * 0x1000 + nOffset + row + 0x0008)
-                    for (var col = 0; col < 8; col++){
-                        var pixel = (tile_lsb & 0x01) << 1 | (tile_msb & 0x01)
-                        tile_lsb >>= 1; tile_msb >>= 1
-                        sprPatternTable[i].SetPixel(
-                            nTileX * 8 + (7 - col),
-                            nTileY * 8 + row,
-                            GetColourFromPaletteRam(plt, pixel)
-                        )
-                    }
-                }
-            }
-	    }
-	    return sprPatternTable[i]
-    }
-    GetColourFromPaletteRam(palette,pixel){
-        return palScreen[ppuRead(0x3F00 + (palette << 2) + pixel) & 0x3F]
     }
 }
 
