@@ -28,7 +28,7 @@ export default {
         },
         step(){
             this.nes.step()
-            if(!this.isDestory)setTimeout(()=>{ this.step() }, 16)
+            if(!this.isDestory)setTimeout(()=>{ this.step() }, 1)
         }
      },
     computed: {  },

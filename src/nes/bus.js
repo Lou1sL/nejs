@@ -118,7 +118,11 @@ const PPU_MEM_SPRIT_PALET = 0x3F10  // 0x0010
 //0x4000 - 0xFFFF                    : Mirrors of 0x0000 - 0x3FFF (x3)
 
 
-
+const PPU_RAM_ADDR_MASK = 0b110000000000
+const PPU_RAM0_SWITCH   = 0b000000000000
+const PPU_RAM1_SWITCH   = 0b010000000000
+const PPU_RAM2_SWITCH   = 0b100000000000
+const PPU_RAM3_SWITCH   = 0b110000000000
 
 
 
@@ -199,7 +203,8 @@ class CPUBus {
 }
 class PPUBus {
     constructor(){
-        this.vram = new Uint8Array(PPU_RAM_SIZE)
+        this.vram0 = new Uint8Array(PPU_RAM_SIZE/2)
+        this.vram1 = new Uint8Array(PPU_RAM_SIZE/2)
         this.chrrom =  new Uint8Array(PPU_CHR_SIZE)
         this.plet = new Uint8Array(PPU_PLT_SIZE)
 
@@ -209,24 +214,26 @@ class PPUBus {
     nmi          ()    { this.cpu.NMI()       }
     setMirroring (val) { this.mirr = val      }
     bindCHRROM   (val) { this.chrrom = val    }
-
+    
     r(addr,maskGray=false){
         addr &= 0x3FFF
         if(addr >= 0 && addr < PPU_CHR_SIZE) return this.chrrom[addr]
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
             addr &= 0x0FFF
+            var ramsel = addr & PPU_RAM_ADDR_MASK
+            addr &= 0x03FF
             switch(this.mirr){
                 case MIRRORING.VERTICAL:
-                    if (addr >= 0x0000 && addr <= 0x03FF) return this.vram[addr & 0x03FF]
-			        if (addr >= 0x0400 && addr <= 0x07FF) return this.vram[(addr & 0x03FF) + 0x0400]
-			        if (addr >= 0x0800 && addr <= 0x0BFF) return this.vram[addr & 0x03FF]
-			        if (addr >= 0x0C00 && addr <= 0x0FFF) return this.vram[(addr & 0x03FF) + 0x0400]
+                    if (ramsel == PPU_RAM0_SWITCH) return this.vram0[addr]
+			        if (ramsel == PPU_RAM1_SWITCH) return this.vram1[addr]
+			        if (ramsel == PPU_RAM2_SWITCH) return this.vram0[addr]
+			        if (ramsel == PPU_RAM3_SWITCH) return this.vram1[addr]
                 break
                 case MIRRORING.HORIZONTAL:
-                    if (addr >= 0x0000 && addr <= 0x03FF) return this.vram[addr & 0x03FF]
-			        if (addr >= 0x0400 && addr <= 0x07FF) return this.vram[addr & 0x03FF]
-			        if (addr >= 0x0800 && addr <= 0x0BFF) return this.vram[(addr & 0x03FF) + 0x0400]
-			        if (addr >= 0x0C00 && addr <= 0x0FFF) return this.vram[(addr & 0x03FF) + 0x0400]
+                    if (ramsel == PPU_RAM0_SWITCH) return this.vram0[addr]
+			        if (ramsel == PPU_RAM1_SWITCH) return this.vram0[addr]
+			        if (ramsel == PPU_RAM2_SWITCH) return this.vram1[addr]
+			        if (ramsel == PPU_RAM3_SWITCH) return this.vram1[addr]
                 break
             }
         }
@@ -245,18 +252,20 @@ class PPUBus {
         if(addr >= 0 && addr < PPU_CHR_SIZE) this.chrrom[addr] = data
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
             addr &= 0x0FFF
+            var ramsel = addr & PPU_RAM_ADDR_MASK
+            addr &= 0x03FF
             switch(this.mirr){
                 case MIRRORING.VERTICAL:
-                    if (addr >= 0x0000 && addr <= 0x03FF) this.vram[addr & 0x03FF] = data
-			        if (addr >= 0x0400 && addr <= 0x07FF) this.vram[(addr & 0x03FF) + 0x0400] = data
-			        if (addr >= 0x0800 && addr <= 0x0BFF) this.vram[addr & 0x03FF] = data
-			        if (addr >= 0x0C00 && addr <= 0x0FFF) this.vram[(addr & 0x03FF) + 0x0400] = data
+                    if (ramsel == PPU_RAM0_SWITCH) this.vram0[addr] = data
+			        if (ramsel == PPU_RAM1_SWITCH) this.vram1[addr] = data
+			        if (ramsel == PPU_RAM2_SWITCH) this.vram0[addr] = data
+			        if (ramsel == PPU_RAM3_SWITCH) this.vram1[addr] = data
                 break
                 case MIRRORING.HORIZONTAL:
-                    if (addr >= 0x0000 && addr <= 0x03FF) this.vram[addr & 0x03FF] = data
-			        if (addr >= 0x0400 && addr <= 0x07FF) this.vram[addr & 0x03FF] = data
-			        if (addr >= 0x0800 && addr <= 0x0BFF) this.vram[(addr & 0x03FF) + 0x0400] = data
-			        if (addr >= 0x0C00 && addr <= 0x0FFF) this.vram[(addr & 0x03FF) + 0x0400] = data
+                    if (ramsel == PPU_RAM0_SWITCH) this.vram0[addr] = data
+			        if (ramsel == PPU_RAM1_SWITCH) this.vram0[addr] = data
+			        if (ramsel == PPU_RAM2_SWITCH) this.vram1[addr] = data
+			        if (ramsel == PPU_RAM3_SWITCH) this.vram1[addr] = data
                 break
             }
         }

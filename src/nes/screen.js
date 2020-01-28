@@ -32,11 +32,8 @@ const PALETTE = [
     new Color(  0, 252, 252), new Color(216, 216, 216), new Color(  0,   0,   0), new Color(  0,   0,   0)
 ]
 
-
-
 class Screen{
     constructor(ctx){
-        console.log(PALETTE)
         this.ctx = ctx
         this.img = ctx.createImageData(WIDTH,HEIGHT)
         this.scr = new Uint32Array(this.img.data.buffer)
