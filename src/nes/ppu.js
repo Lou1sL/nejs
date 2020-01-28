@@ -1,14 +1,6 @@
-
 /**
- * 
+ * 2C02 PPU for Nintendo Entertainment System(Famicom)
  */
-
-
-
-const WIDTH  = 256
-const HEIGHT = 240
-
-
 
 const SPRITE_DATA_SIZE = 4
 const SPRITE_DATA_Y    = 0

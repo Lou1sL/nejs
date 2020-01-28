@@ -4,11 +4,11 @@ const HEIGHT = 240
 
 class Color {
     constructor(r,g,b){
-        this.arr = new Uint8ClampedArray(4)
-        this.arr[0] = r; this.arr[1] = g; this.arr[2] = b; this.arr[3] = 0xFF;
+        this.color = ((r & 0xFF) << (8 * 0)) | ((g & 0xFF) << (8 * 1)) | ((b & 0xFF) << (8 * 2)) | ((0xFF & 0xFF) << (8 * 3))
     }
 }
 
+//UInt32Array
 const PALETTE = [
     //0x00-0x0F
     new Color(124, 124, 124), new Color(  0,   0, 252), new Color(  0,   0, 188), new Color( 68,  40, 188),
@@ -36,26 +36,16 @@ const PALETTE = [
 
 class Screen{
     constructor(ctx){
-        this.scr = new Uint8ClampedArray(WIDTH*HEIGHT*4)
+        console.log(PALETTE)
         this.ctx = ctx
+        this.img = ctx.createImageData(WIDTH,HEIGHT)
+        this.scr = new Uint32Array(this.img.data.buffer)
     }
     updatePixelPicker(x,y,index){
-        this.scr[(y*WIDTH+x)*4 + 0] = PALETTE[index].arr[0]
-        this.scr[(y*WIDTH+x)*4 + 1] = PALETTE[index].arr[1]
-        this.scr[(y*WIDTH+x)*4 + 2] = PALETTE[index].arr[2]
-        this.scr[(y*WIDTH+x)*4 + 3] = PALETTE[index].arr[3]
+        this.scr[y*WIDTH+x] = PALETTE[index].color
     }
     updateCanvas(){
-        for(var x=0;x<WIDTH;x++){
-            for(var y=0;y<HEIGHT;y++){
-                var id = this.ctx.createImageData(1,1)
-                id.data[0]   = this.scr[(y*WIDTH+x)*4 + 0]
-                id.data[1]   = this.scr[(y*WIDTH+x)*4 + 1]
-                id.data[2]   = this.scr[(y*WIDTH+x)*4 + 2]
-                id.data[3]   = this.scr[(y*WIDTH+x)*4 + 3]
-                this.ctx.putImageData(id, x, y)
-            }
-        }
+        this.ctx.putImageData(this.img,0,0)
     }
 }
 
