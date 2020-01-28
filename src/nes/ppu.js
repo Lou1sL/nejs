@@ -521,17 +521,17 @@ class PPU {
                 var is8x16 = this.ctrl.is8x16()
                 var ptn = (this.render.spriteScanline[i].getAttr() & 0x80) != 0
                 
-                var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()) & 0xFFFF
+                var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()) & 0xFF
                 if(is8x16){
                     sp_ptn_addr_l = 
                             ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
-                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?1:0)) <<  4)|
-                            ((ptn?(7 - diff & 0x07):(diff & 0x07)) & 0xFF)
+                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?(ptn?1:0):(ptn?0:1))) << 4)|
+                            ((ptn?(7 - (diff & 0x07)):(diff & 0x07)))
                 }else{
                     sp_ptn_addr_l = 
                             ((this.ctrl.isSpSel()?1:0) << 12) |
                             (this.render.spriteScanline[i].getTile() << 4) |
-                            ((ptn?(7 - diff):diff) & 0xFF)
+                            ((ptn?(7 - diff):diff))
                 }
 
                 sp_ptn_addr_h = (sp_ptn_addr_l + 8) & 0xFFFF
@@ -553,12 +553,12 @@ class PPU {
         var cycle = this.pixelIter.getCycle()
         if(cycle == 257){
             this.render.resetSpriteScanline()
-            for(var entry = 0; entry < 64 && this.render.spriteCount <= SPRITE_SCANLINE_MAX; entry++){
-                var diff = this.pixelIter.getScanline() - this.oam.getY(entry)
+            for(var entry = 0; (entry < 64) && (this.render.spriteCount <= SPRITE_SCANLINE_MAX); entry++){
+                var diff = (this.pixelIter.getScanline() - this.oam.getY(entry)) & 0xFFFF
                 if(diff > 0 && diff < (this.ctrl.getSpriteH())){
                     if(this.render.spriteCount < SPRITE_SCANLINE_MAX){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
-                        this.oam.setSprite(entry,this.render.spriteScanline[this.render.spriteCount].getArr())
+                        this.render.spriteScanline[this.render.spriteCount].setArr(this.oam.getSprite(entry))
                         this.render.spriteCount++
                     }
                 }
@@ -612,6 +612,8 @@ class PPU {
         if(this.mask.isRenderSp()){
             this.render.spriteZeroBeingRendered = false
             for(var i=0;i<this.render.spriteCount;i++){
+                if(this.render.spriteScanline[i].getX()!=0) continue
+                
                 var pl = (this.render.sp_s_ptn_l[i] & 0x80) > 0 ? 1 : 0
                 var ph = (this.render.sp_s_ptn_h[i] & 0x80) > 0 ? 1 : 0
                 sp_pixel = (ph << 1) | pl
