@@ -280,9 +280,9 @@ class PPU {
         this.t    = new Addr()    //15 bits  Temporary VRAM address (15 bits); can also be thought of as the address of the top left onscreen tile.
         this.x    = new FineX()   //3  bits  Fine X scroll
         this.w    = new WLatch()  //1  bit   First or second write toggle (1 bit)
-        this.ctrl = new Ctrl() //0x2000
-        this.mask = new Mask() //0x2001
-        this.stat = new Stat() //0x2002
+        this.ctrl = new Ctrl()    //0x2000
+        this.mask = new Mask()    //0x2001
+        this.stat = new Stat()    //0x2002
         this.reg_buffer = 0x00
 
         this.bus = bus
@@ -416,11 +416,11 @@ class PPU {
         this.v.setFineY(this.t.getFineY())
     }
     reloadBgShifter(){
-        this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l & 0xFF00) | this.render.bg_l
-        this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h & 0xFF00) | this.render.bg_h
+        this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l & 0xFF00) | (this.render.bg_l & 0x00FF)
+        this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h & 0xFF00) | (this.render.bg_h & 0x00FF)
 
-        this.render.bg_s_atr_l = (this.render.bg_s_atr_l & 0xFF00) | ((this.render.bg_at & 0b01) ? 0xFF:0x00)
-        this.render.bg_s_atr_h = (this.render.bg_s_atr_h & 0xFF00) | ((this.render.bg_at & 0b10) ? 0xFF:0x00)
+        this.render.bg_s_atr_l = (this.render.bg_s_atr_l & 0xFF00) | (((this.render.bg_at & 0b01) > 0) ? 0xFF:0x00)
+        this.render.bg_s_atr_h = (this.render.bg_s_atr_h & 0xFF00) | (((this.render.bg_at & 0b10) > 0) ? 0xFF:0x00)
     }
     updateShifter(){
         if(this.mask.isRenderBg()){
@@ -546,14 +546,14 @@ class PPU {
                     }
                 }
 
-                sp_ptn_addr_h = sp_ptn_addr_l + 8
+                sp_ptn_addr_h = (sp_ptn_addr_l + 8) & 0xFF
 
                 sp_ptn_data_l = this.busRAddr(sp_ptn_addr_l)
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
 
                 if((this.render.spriteScanline[i].getAttr() & 0x40) != 0){
-                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString(2).split("").reverse().join(""))
-                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString(2).split("").reverse().join(""))
+                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString(2).split("").reverse().join(""),2) & 0xFF
+                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString(2).split("").reverse().join(""),2) & 0xFF
                 }
 
                 this.render.sp_s_ptn_l[i] = sp_ptn_data_l

@@ -201,7 +201,7 @@ class PPUBus {
     constructor(){
         this.vram = new Uint8Array(PPU_RAM_SIZE)
         this.chrrom =  new Uint8Array(PPU_CHR_SIZE)
-        this.plet = //new Uint8Array(PPU_PLT_SIZE)
+        this.plet = new Uint8Array(PPU_PLT_SIZE)
         Uint8Array.from([
             0x09, 0x01, 0x00, 0x01, 0x00, 0x02, 0x02, 0x0d, 0x08, 0x10, 0x08, 0x24, 0x00, 0x00, 0x04, 0x2c,
             0x09, 0x01, 0x34, 0x03, 0x00, 0x04, 0x00, 0x14, 0x08, 0x3a, 0x00, 0x02, 0x00, 0x20, 0x2c, 0x08,
@@ -214,6 +214,7 @@ class PPUBus {
     bindCHRROM   (val) { this.chrrom = val    }
 
     r(addr){
+        addr &= 0x3FFF
         if(addr >= 0 && addr < PPU_CHR_SIZE) return this.chrrom[addr]
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
             addr &= 0x0FFF
@@ -233,12 +234,17 @@ class PPUBus {
             }
         }
         else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){
-            if ((addr & 0x13) == 0x10) addr &= ~0x10
-            return this.plet[addr & 0x1F]// & (mask.gray ? 0x30 : 0xFF) //TODO: mask gray
+            addr &= 0x001F
+            if (addr == 0x10) addr = 0x00
+            if (addr == 0x14) addr = 0x04
+            if (addr == 0x18) addr = 0x08
+            if (addr == 0x1C) addr = 0x0C
+            return this.plet[addr]// & (mask.gray ? 0x30 : 0xFF) //TODO: mask gray
         }
         return 0
     }
     w(addr,data){
+        addr &= 0x3FFF
         if(addr >= 0 && addr < PPU_CHR_SIZE) this.chrrom[addr] = data
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
             addr &= 0x0FFF
@@ -258,8 +264,12 @@ class PPUBus {
             }
         }
         else if(addr >= PPU_MEM_IMAGE_PALET && addr <0x4000){
-            if ((addr & 0x13) == 0x10) addr &= ~0x10
-            this.plet[addr & 0x1F] = data
+            addr &= 0x001F
+            if (addr == 0x10) addr = 0x00
+            if (addr == 0x14) addr = 0x04
+            if (addr == 0x18) addr = 0x08
+            if (addr == 0x1C) addr = 0x0C
+            this.plet[addr] = data
         }
     }
 }
