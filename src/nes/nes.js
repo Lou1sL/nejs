@@ -74,6 +74,7 @@ class NES {
             this.ppu.STEP()
             cycle += cpures.cycle
         }
+        //console.log('s')
         //console.log(cpures)
     }
     rst(){

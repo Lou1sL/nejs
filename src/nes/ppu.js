@@ -571,7 +571,7 @@ class PPU {
         /** do nothing */
         if(this.pixelIter.getCycle() == 1){
             this.screen.updateCanvas()
-            console.log('F:'+this.frame++)
+            //console.log('F:'+this.frame++)
         }
         
     }
