@@ -428,8 +428,8 @@ class PPU {
         if(this.mask.isRenderBg()){
             this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l << 1) & 0xFFFF
             this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h << 1) & 0xFFFF
-            this.render.bg_s_atr_l = (this.render.bg_s_atr_l << 1) & 0x00FF
-            this.render.bg_s_atr_h = (this.render.bg_s_atr_h << 1) & 0x00FF
+            this.render.bg_s_atr_l = (this.render.bg_s_atr_l << 1) & 0xFFFF
+            this.render.bg_s_atr_h = (this.render.bg_s_atr_h << 1) & 0xFFFF
         }
         if(this.mask.isRenderSp()){
             var cycle = this.pixelIter.getCycle()
@@ -521,34 +521,20 @@ class PPU {
                 var is8x16 = this.ctrl.is8x16()
                 var ptn = (this.render.spriteScanline[i].getAttr() & 0x80) != 0
                 
-                var diff = this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()
+                var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()) & 0xFFFF
                 if(is8x16){
-                    if(ptn){
-                        sp_ptn_addr_l = 
+                    sp_ptn_addr_l = 
                             ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
                             (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?1:0)) <<  4)|
-                            (7 - diff & 0x07)
-                    }else{
-                        sp_ptn_addr_l = 
-                            ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
-                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?0:1)) <<  4)|
-                            (diff & 0x07)
-                    }
+                            ((ptn?(7 - diff & 0x07):(diff & 0x07)) & 0xFF)
                 }else{
-                    if(ptn){
-                        sp_ptn_addr_l = 
+                    sp_ptn_addr_l = 
                             ((this.ctrl.isSpSel()?1:0) << 12) |
                             (this.render.spriteScanline[i].getTile() << 4) |
-                            (7 - diff)
-                    }else{
-                        sp_ptn_addr_l = 
-                            ((this.ctrl.isSpSel()?1:0) << 12) |
-                            (this.render.spriteScanline[i].getTile() << 4) |
-                            (diff)
-                    }
+                            ((ptn?(7 - diff):diff) & 0xFF)
                 }
 
-                sp_ptn_addr_h = (sp_ptn_addr_l + 8) & 0xFF
+                sp_ptn_addr_h = (sp_ptn_addr_l + 8) & 0xFFFF
 
                 sp_ptn_data_l = this.busRAddr(sp_ptn_addr_l)
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
