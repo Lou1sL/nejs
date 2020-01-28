@@ -167,6 +167,8 @@ class Mask {
     isRenderBgL()    { return (this.value & MASK_m) != 0 }
     isRenderSpL()    { return (this.value & MASK_M) != 0 }
 
+    isGray     ()    { return (this.value & MASK_g) != 0 }
+
     setRenderBg()    { this.value |=  MASK_b }
     clrRenderBg()    { this.value &= ~MASK_b } 
 }
@@ -293,10 +295,10 @@ class PPU {
 
         this.frame = 0
     }
-    busR    ()          { return this.bus.r(this.v.get()) }
-    busW    (data)      { this.bus.w(this.v.get(),data)   }
-    busRAddr(addr)      { return this.bus.r(addr) }
-    busWAddr(addr,data) { this.bus.w(addr,data)   }
+    busR    ()          { return this.bus.r(this.v.get(),this.mask.isGray()) }
+    busW    (data)      { this.bus.w(this.v.get(),data)                      }
+    busRAddr(addr)      { return this.bus.r(addr,        this.mask.isGray()) }
+    busWAddr(addr,data) { this.bus.w(addr,data)                              }
 
     incAddr () { this.v.set(this.v.get() + this.ctrl.getAddrInc()) }
 
@@ -332,8 +334,8 @@ class PPU {
         //Nametable -> delay, palette -> no delay.
         var res = this.reg_buffer
         this.reg_buffer = this.busR()
-        if((this.v.get() % 0x4000) >= 0x3F00) res = this.reg_buffer
-        this.incAddr()
+        if(this.v.get() >= 0x3F00) res = this.reg_buffer
+        //this.incAddr()
         return res
     }
     //0x2000 PPUCTRL
@@ -364,7 +366,7 @@ class PPU {
     //0x2006 PPUADDR   (x2)
     REG_ADDR_W (val){
         if(this.w.isOff()){
-            this.t.set((this.t.get() & 0b1000000011111111) | ((val & 0b00111111) << 8))
+            this.t.set((this.t.get() & 0x00FF) | ((val & 0x3F) << 8))
         }else{
             this.t.set((this.t.get() & 0xFF00) | (val & 0xFF))
             this.v.set(this.t.get())
@@ -632,7 +634,7 @@ class PPU {
                 sp_prior = (this.render.spriteScanline[i].getAttr() & 0x20) == 0
 
                 if(sp_pixel!=0){
-                    if(i==0)this.render.spriteZeroBeingRendered = true
+                    if(i==0 && this.render.spriteZeroHitPossible)this.render.spriteZeroBeingRendered = true
                     break
                 }
             }
