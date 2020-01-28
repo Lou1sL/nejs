@@ -1,7 +1,7 @@
 <template>
     <div id="app">
         <input type="file" ref="myFile" @change="selectedFile"><br/>
-        <canvas ref="myCanvas" id="canvas" width="256" height="240"></canvas>
+        <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
     </div>
 </template>
 
