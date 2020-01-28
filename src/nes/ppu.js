@@ -521,12 +521,12 @@ class PPU {
                 var is8x16 = this.ctrl.is8x16()
                 var ptn = (this.render.spriteScanline[i].getAttr() & 0x80) != 0
                 
-                var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY()) & 0xFF
+                var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY())
                 if(is8x16){
                     sp_ptn_addr_l = 
                             ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
-                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (diff < 8?(ptn?1:0):(ptn?0:1))) << 4)|
-                            ((ptn?(7 - (diff & 0x07)):(diff & 0x07)))
+                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (ptn?(diff<8?1:0):(diff<8?0:1))) << 4)|
+                            ((ptn?(7 - diff & 0x07):(diff & 0x07)))
                 }else{
                     sp_ptn_addr_l = 
                             ((this.ctrl.isSpSel()?1:0) << 12) |
@@ -608,7 +608,7 @@ class PPU {
 
         var sp_pixel = 0
         var sp_palet = 0
-        var sp_prior = 0
+        var sp_prior = false
         if(this.mask.isRenderSp()){
             this.render.spriteZeroBeingRendered = false
             for(var i=0;i<this.render.spriteCount;i++){
@@ -632,10 +632,19 @@ class PPU {
         var cycle = this.pixelIter.getCycle()
         var scanline = this.pixelIter.getScanline()
 
-        var pixel = bg_pixel | sp_pixel
-        var palet = bg_palet | sp_palet
+        var pixel = 0
+        var palet = 0
 
-        if((bg_pixel!=0) && (sp_pixel!=0)){
+        if(bg_pixel == 0 && sp_pixel == 0){
+            pixel = 0;        palet = 0;
+        }
+        else if(bg_pixel != 0 && sp_pixel == 0){
+            pixel = bg_pixel; palet = bg_palet;
+        }
+        else if(bg_pixel == 0 && sp_pixel != 0){
+            pixel = sp_pixel; palet = sp_palet;
+        }
+        else if(bg_pixel != 0 && sp_pixel != 0){
             pixel = sp_prior ? sp_pixel:bg_pixel
             palet = sp_prior ? sp_palet:bg_palet
             if(this.render.spriteZeroHitPossible && this.render.spriteZeroBeingRendered){
