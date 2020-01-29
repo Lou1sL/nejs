@@ -1,16 +1,17 @@
 /**
  * 2C02 PPU for Nintendo Entertainment System(Famicom)
- */
+*/
 
-const SPRITE_DATA_SIZE = 4
-const SPRITE_DATA_Y    = 0
-const SPRITE_DATA_T    = 1
-const SPRITE_DATA_A    = 2
-const SPRITE_DATA_X    = 3
 
-const SPRITE_SCANLINE_MAX = 8
-const OAM_SPRITE_COUNT = 64
-const OAM_SIZE = OAM_SPRITE_COUNT * SPRITE_DATA_SIZE
+const BIT_1  = 0x0001
+const BIT_2  = 0x0003
+const BIT_3  = 0x0007
+const BIT_4  = 0x000F
+const BIT_5  = 0x001F
+const BIT_6  = 0x003F
+const BIT_7  = 0x007F
+const BIT_8  = 0x00FF
+const BIT_16 = 0xFFFF
 
 const CTRL_V = 0x80 // NMI Enable(vblank)       0:ehhh..  1:yeah!
 const CTRL_P = 0x40 // PPU master/slave         0:rEXT    1:wEXT
@@ -35,14 +36,47 @@ const STAT_V = 0x80 // Vblank
 const STAT_S = 0x40 // Sprite 0 hit
 const STAT_O = 0x20 // Sprite overflow
 
-const ADDR_BITS = 0b0111111111111111
+
+//https://wiki.nesdev.com/w/index.php/PPU_OAM
+const SPRITE_DATA_SIZE = 4
+const SPRITE_DATA_Y    = 0
+const SPRITE_DATA_T    = 1
+const SPRITE_DATA_A    = 2
+const SPRITE_DATA_X    = 3
+
+const SPRITE_TILE_NUMB  = 0b11111110
+const SPRITE_TILE_BANK  = 0b00000001
+const SPRITE_ATTR_VFLIP = 0b10000000
+const SPRITE_ATTR_HFLIP = 0b01000000
+const SPRITE_ATTR_PRIOR = 0b00100000
+const SPRITE_ATTR_UNIMP = 0b00011100
+const SPRITE_ATTR_PALET = 0b00000011
+
+const OAM_SPRITE_COUNT = 64
+const OAM_DATA_SIZE    = OAM_SPRITE_COUNT * SPRITE_DATA_SIZE
+const SPRITE_SCANLINE_MAX = 8
 
 //https://wiki.nesdev.com/w/index.php/PPU_scrolling#PPU_internal_registers
-const ADDR_y  = 0b0111000000000000 // fine Y scroll
-const ADDR_NY = 0b0000100000000000 // nametable Y select
-const ADDR_NX = 0b0000010000000000 // nametable X select
-const ADDR_Y  = 0b0000001111100000 // coarse Y scroll
-const ADDR_X  = 0b0000000000011111 // coarse X scroll
+const ADDR_BITS = 0b0111111111111111
+const ADDR_y    = 0b0111000000000000 // fine Y scroll
+const ADDR_NY   = 0b0000100000000000 // nametable Y select
+const ADDR_NX   = 0b0000010000000000 // nametable X select
+const ADDR_Y    = 0b0000001111100000 // coarse Y scroll
+const ADDR_X    = 0b0000000000011111 // coarse X scroll
+
+
+class Tile {
+    constructor(val) { this.value = val                     }
+    getNumber  ()    { return this.value & SPRITE_TILE_NUMB }
+    getBank    ()    { return this.value & SPRITE_TILE_BANK }
+}
+class Attribute {
+    constructor(val) { this.value = val                             }
+    isVFlip    ()    { return (this.value & SPRITE_ATTR_VFLIP) != 0 }
+    isHFlip    ()    { return (this.value & SPRITE_ATTR_HFLIP) != 0 }
+    isPrior    ()    { return (this.value & SPRITE_ATTR_PRIOR) == 0 }
+    getPalet   ()    { return this.value & SPRITE_ATTR_PALET        }
+}
 
 class Sprite {
     constructor()    { this.value = new Uint8Array(SPRITE_DATA_SIZE) }
@@ -54,26 +88,29 @@ class Sprite {
     getAttr    ()    { return this.value[SPRITE_DATA_A] }
     getX       ()    { return this.value[SPRITE_DATA_X] }
 
-    setY       (val) { this.value[SPRITE_DATA_Y] = val & 0xFF }
-    setTile    (val) { this.value[SPRITE_DATA_T] = val & 0xFF }
-    setAttr    (val) { this.value[SPRITE_DATA_A] = val & 0xFF }
-    setX       (val) { this.value[SPRITE_DATA_X] = val & 0xFF }
+    setY       (val) { this.value[SPRITE_DATA_Y] = val & BIT_8 }
+    setTile    (val) { this.value[SPRITE_DATA_T] = val & BIT_8 }
+    setAttr    (val) { this.value[SPRITE_DATA_A] = val & BIT_8 }
+    setX       (val) { this.value[SPRITE_DATA_X] = val & BIT_8 }
 
-    reset      ()    { for(var i=0;i<SPRITE_DATA_SIZE;i++)this.value[i] = 0xFF }
+    getAttrObj ()    { return new Attribute(this.getAttr())    }
+    getTileObj ()    { return new Tile(this.getTile())         }
+
+    reset      ()    { for(var i=0;i<SPRITE_DATA_SIZE;i++)this.value[i] = 0 }
 }
 
 class OAM {
-    constructor()      { this.value = new Uint8Array(OAM_SIZE); this.addr=0x00 }
-    reset      ()      { this.value = new Uint8Array(OAM_SIZE); this.addr=0x00 }
+    constructor()      { this.value = new Uint8Array(OAM_DATA_SIZE); this.addr = 0 }
+    reset      ()      { this.value = new Uint8Array(OAM_DATA_SIZE); this.addr = 0 }
     
-    addrInc    ()      { this.addr = (this.addr + 1) & 0xFF              }
+    addrInc    ()      { this.addr = (this.addr + 1) & BIT_8             }
 
     getAddr    ()      { return this.addr                                }
-    setAddr    (val)   { this.addr = val & 0xFF                          }
+    setAddr    (val)   { this.addr = val & BIT_8                         }
     getEle     (i)     { return this.value[i]                            }
-    setEle     (i,val) { this.value[i] = val & 0xFF                      }
+    setEle     (i,val) { this.value[i] = val & BIT_8                     }
     getCurrent ()      { return this.value[this.addr]                    }
-    setCurrent (val)   { this.value[this.addr] = val & 0xFF              }
+    setCurrent (val)   { this.value[this.addr] = val & BIT_8             }
     getArr     ()      { return this.value                               }
     setArr     (val)   { this.value = val                                }
     getSprite  (i)     { 
@@ -89,10 +126,10 @@ class OAM {
     getAttr    (i)     { return this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_A] }
     getX       (i)     { return this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_X] }
 
-    setY       (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_Y] = val & 0xFF }
-    setTile    (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_T] = val & 0xFF }
-    setAttr    (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_A] = val & 0xFF }
-    setX       (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_X] = val & 0xFF }
+    setY       (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_Y] = val & BIT_8 }
+    setTile    (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_T] = val & BIT_8 }
+    setAttr    (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_A] = val & BIT_8 }
+    setX       (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_X] = val & BIT_8 }
 }
 class Addr {
     constructor()    { this.value = 0               }
@@ -106,17 +143,17 @@ class Addr {
     getNameTbY ()    { return (this.value & ADDR_NY) >>> 11 }
     getFineY   ()    { return (this.value & ADDR_y)  >>> 12 }
     
-    setCoarseX (val) { this.value &= ~ADDR_X;  this.value |= ((val & 0b11111) <<  0) }
-    setCoarseY (val) { this.value &= ~ADDR_Y;  this.value |= ((val & 0b11111) <<  5) }
-    setNameTbX (val) { this.value &= ~ADDR_NX; this.value |= ((val & 0b00001) << 10) }
-    setNameTbY (val) { this.value &= ~ADDR_NY; this.value |= ((val & 0b00001) << 11) }
-    setFineY   (val) { this.value &= ~ADDR_y;  this.value |= ((val & 0b00111) << 12) }
+    setCoarseX (val) { this.value &= ~ADDR_X;  this.value |= ((val & BIT_5) <<  0) }
+    setCoarseY (val) { this.value &= ~ADDR_Y;  this.value |= ((val & BIT_5) <<  5) }
+    setNameTbX (val) { this.value &= ~ADDR_NX; this.value |= ((val & BIT_1) << 10) }
+    setNameTbY (val) { this.value &= ~ADDR_NY; this.value |= ((val & BIT_1) << 11) }
+    setFineY   (val) { this.value &= ~ADDR_y;  this.value |= ((val & BIT_3) << 12) }
 }
 class FineX {
     constructor()    { this.value = 0           }
     reset      ()    { this.value = 0           }
     get        ()    { return this.value        }
-    set        (val) { this.value = val & 0b111 }
+    set        (val) { this.value = val & BIT_3 }
 }
 class WLatch {
     constructor()    { this.value = false       }
@@ -128,7 +165,7 @@ class Ctrl {
     constructor()    { this.value = 0          }
     reset      ()    { this.value = 0          }
     get        ()    { return this.value       } 
-    set        (val) { this.value = val & 0xFF }
+    set        (val) { this.value = val & BIT_8 }
 
     isVBlank   ()    { return (this.value & CTRL_V) != 0 }
     is8x16     ()    { return (this.value & CTRL_H) != 0 }
@@ -151,7 +188,7 @@ class Mask {
     constructor()    { this.value = 0          }
     reset      ()    { this.value = 0          }
     get        ()    { return this.value       } 
-    set        (val) { this.value = val & 0xFF }
+    set        (val) { this.value = val & BIT_8 }
 
     isRenderBg ()    { return (this.value & MASK_b) != 0 }
     isRenderSp ()    { return (this.value & MASK_s) != 0 }
@@ -277,7 +314,7 @@ class PPU {
         this.ctrl = new Ctrl()    //0x2000
         this.mask = new Mask()    //0x2001
         this.stat = new Stat()    //0x2002
-        this.reg_buffer = 0x00
+        this.reg_buffer = 0
 
         this.bus = bus
         this.screen = screen
@@ -358,9 +395,9 @@ class PPU {
     //0x2006 PPUADDR   (x2)
     REG_ADDR_W (val){
         if(this.w.isOff()){
-            this.t.set((this.t.get() & 0x00FF) | ((val & 0x3F) << 8))
+            this.t.set((this.t.get() & 0x00FF) | ((val & BIT_6) << 8))
         }else{
-            this.t.set((this.t.get() & 0xFF00) | (val & 0xFF))
+            this.t.set((this.t.get() & 0xFF00) | (val & BIT_8))
             this.v.set(this.t.get())
         }
         this.w.trigger()
@@ -373,7 +410,7 @@ class PPU {
     //0x4019 OAMDMA
     REG_ODMA_W (val,cpubus){ 
         for(var a=0;a<0x100;a++)
-            this.oam.setEle((a+this.oam.getAddr()) & 0xFF,cpubus.r((val << 8) + a))
+            this.oam.setEle((a+this.oam.getAddr()) & BIT_8,cpubus.r((val << 8) + a))
     }
 
 
@@ -418,10 +455,10 @@ class PPU {
     }
     updateShifter(){
         if(this.mask.isRenderBg()){
-            this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l << 1) & 0xFFFF
-            this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h << 1) & 0xFFFF
-            this.render.bg_s_atr_l = (this.render.bg_s_atr_l << 1) & 0xFFFF
-            this.render.bg_s_atr_h = (this.render.bg_s_atr_h << 1) & 0xFFFF
+            this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l << 1) & BIT_16
+            this.render.bg_s_ptn_h = (this.render.bg_s_ptn_h << 1) & BIT_16
+            this.render.bg_s_atr_l = (this.render.bg_s_atr_l << 1) & BIT_16
+            this.render.bg_s_atr_h = (this.render.bg_s_atr_h << 1) & BIT_16
         }
         if(this.mask.isRenderSp()){
             var cycle = this.pixelIter.getCycle()
@@ -431,8 +468,8 @@ class PPU {
                     if (x > 0)this.render.spriteScanline[i].setX(x-1)
                     else
                     {
-                        this.render.sp_s_ptn_l[i] = (this.render.sp_s_ptn_l[i] << 1) & 0xFF
-                        this.render.sp_s_ptn_h[i] = (this.render.sp_s_ptn_h[i] << 1) & 0xFF
+                        this.render.sp_s_ptn_l[i] = (this.render.sp_s_ptn_l[i] << 1) & BIT_8
+                        this.render.sp_s_ptn_h[i] = (this.render.sp_s_ptn_h[i] << 1) & BIT_8
                     }
                 }
             }
@@ -472,8 +509,8 @@ class PPU {
                     | ((this.v.getCoarseY() >>> 2) << 3)
                     | (this.v.getCoarseX() >>> 2))
 
-                    if((this.v.getCoarseY() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 4) & 0xFF
-                    if((this.v.getCoarseX() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 2) & 0xFF
+                    if((this.v.getCoarseY() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 4) & BIT_8
+                    if((this.v.getCoarseX() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 2) & BIT_8
                     this.render.bg_at &= 0x03
                 break
                 case 4 :
@@ -511,29 +548,29 @@ class PPU {
                 var sp_ptn_addr_h = 0
 
                 var is8x16 = this.ctrl.is8x16()
-                var ptn = (this.render.spriteScanline[i].getAttr() & 0x80) != 0
+                var vf = (this.render.spriteScanline[i].getAttrObj().isVFlip())
                 
                 var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY())
                 if(is8x16){
                     sp_ptn_addr_l = 
-                            ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
-                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (ptn?(diff<=8?1:0):(diff<8?0:1))) << 4)|
-                            ((ptn?(7 - diff & 0x07):(diff & 0x07))&0b1111)
+                            (this.render.spriteScanline[i].getTileObj().getBank() << 12) |
+                            ((((this.render.spriteScanline[i].getTileObj().getNumber()) + (vf?(diff<8?1:0):(diff<8?0:1))) &0xFF) << 4) |
+                            ((vf?(7 - diff & BIT_3):(diff & BIT_3)) & BIT_4)
                 }else{
                     sp_ptn_addr_l = 
                             ((this.ctrl.isSpSel()?1:0) << 12) |
                             (this.render.spriteScanline[i].getTile() << 4) |
-                            ((ptn?(7 - diff):diff)&0b1111)
+                            ((vf?(7 - diff):diff) & BIT_4)
                 }
 
-                sp_ptn_addr_h = (sp_ptn_addr_l + 8) & 0xFFFF
+                sp_ptn_addr_h = (sp_ptn_addr_l + 8) & BIT_16
 
                 sp_ptn_data_l = this.busRAddr(sp_ptn_addr_l)
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
 
-                if((this.render.spriteScanline[i].getAttr() & 0x40) != 0){
-                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString(2).padStart(8, '0').split("").reverse().join(""),2) & 0xFF
-                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString(2).padStart(8, '0').split("").reverse().join(""),2) & 0xFF
+                if(this.render.spriteScanline[i].getAttrObj().isHFlip()){
+                    sp_ptn_data_l = parseInt((sp_ptn_data_l & BIT_8).toString(2).padStart(8, '0').split("").reverse().join(""),2) & BIT_8
+                    sp_ptn_data_h = parseInt((sp_ptn_data_h & BIT_8).toString(2).padStart(8, '0').split("").reverse().join(""),2) & BIT_8
                 }
 
                 this.render.sp_s_ptn_l[i] = sp_ptn_data_l
@@ -547,7 +584,7 @@ class PPU {
             this.render.resetSpriteScanline()
             for(var entry = 0; (entry < 64) && (this.render.spriteCount <= SPRITE_SCANLINE_MAX); entry++){
                 var diff = (this.pixelIter.getScanline() - this.oam.getY(entry))// & 0xFFFF
-                if(diff > 0 && diff < (this.ctrl.getSpriteH())){
+                if(diff >= 0 && diff < (this.ctrl.getSpriteH())){
                     if(this.render.spriteCount < SPRITE_SCANLINE_MAX){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
                         this.render.spriteScanline[this.render.spriteCount].setArr(this.oam.getSprite(entry))
@@ -606,12 +643,12 @@ class PPU {
             for(var i=0;i<this.render.spriteCount;i++){
                 if(this.render.spriteScanline[i].getX()!=0) continue
                 
-                var pl = (this.render.sp_s_ptn_l[i] & 0x80) > 0 ? 1 : 0
-                var ph = (this.render.sp_s_ptn_h[i] & 0x80) > 0 ? 1 : 0
+                var pl = (this.render.sp_s_ptn_l[i] & 0x80) != 0 ? 1 : 0
+                var ph = (this.render.sp_s_ptn_h[i] & 0x80) != 0 ? 1 : 0
                 sp_pixel = (ph << 1) | pl
 
-                sp_palet = ((this.render.spriteScanline[i].getAttr() & 0x03) + 0x04) & 0xFF
-                sp_prior = (this.render.spriteScanline[i].getAttr() & 0x20) == 0
+                sp_palet = (this.render.spriteScanline[i].getAttrObj().getPalet() | 0b0100) & BIT_8
+                sp_prior = this.render.spriteScanline[i].getAttrObj().isPrior()
 
                 if(sp_pixel!=0){
                     if(i==0 && this.render.spriteZeroHitPossible)this.render.spriteZeroBeingRendered = true
@@ -619,7 +656,7 @@ class PPU {
                 }
             }
         }
-
+        
         //-----
         var cycle = this.pixelIter.getCycle()
         var scanline = this.pixelIter.getScanline()
@@ -650,7 +687,7 @@ class PPU {
             }
         }
 
-        this.screen.updatePixelPicker(cycle-1,scanline,this.busRAddr(0x3F00+(palet<<2)+pixel) & 0x3F)
+        this.screen.updatePixelPicker(cycle-1,scanline,this.busRAddr(0x3F00+(palet<<2)+pixel) & BIT_6)
 
         this.pixelIter.iterate()
 
