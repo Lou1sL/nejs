@@ -243,7 +243,7 @@ class PPUBus {
             if (addr == 0x14) addr = 0x04
             if (addr == 0x18) addr = 0x08
             if (addr == 0x1C) addr = 0x0C
-            return this.plet[addr] & (maskGray ? 0x30 : 0xFF) //TODO: mask gray
+            return this.plet[addr] & (maskGray ? 0x30 : 0xFF)
         }
         return 0
     }

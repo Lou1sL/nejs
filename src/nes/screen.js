@@ -23,7 +23,7 @@ const PALETTE = [
     //0x20-0x2F
     new Color(248, 248, 248), new Color( 60, 188, 252), new Color(104, 136, 252), new Color(152, 120, 248),
     new Color(248, 120, 248), new Color(248,  88, 152), new Color(248, 120,  88), new Color(252, 160,  68),
-    new Color(248, 184,   0), new Color(184, 248,  24), new Color( 88, 216,  84), new Color( 88, 248, 152), 
+    new Color(248, 184,   0), new Color(184, 248,  24), new Color( 88, 216,  84), new Color( 88, 248, 152),
     new Color(  0, 232, 216), new Color(120, 120, 120), new Color(  0,   0,   0), new Color(  0,   0,   0),
     //0x30-0x3F
     new Color(252, 252, 252), new Color(164, 228, 252), new Color(184, 184, 248), new Color(216, 184, 248),

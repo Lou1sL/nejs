@@ -517,13 +517,13 @@ class PPU {
                 if(is8x16){
                     sp_ptn_addr_l = 
                             ((this.render.spriteScanline[i].getTile() & 0x01) << 12)|
-                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (ptn?(diff<8?1:0):(diff<8?0:1))) << 4)|
-                            ((ptn?(7 - diff & 0x07):(diff & 0x07)))
+                            (((this.render.spriteScanline[i].getTile() & 0xFE) + (ptn?(diff<=8?1:0):(diff<8?0:1))) << 4)|
+                            ((ptn?(7 - diff & 0x07):(diff & 0x07))&0b1111)
                 }else{
                     sp_ptn_addr_l = 
                             ((this.ctrl.isSpSel()?1:0) << 12) |
                             (this.render.spriteScanline[i].getTile() << 4) |
-                            ((ptn?(7 - diff):diff))
+                            ((ptn?(7 - diff):diff)&0b1111)
                 }
 
                 sp_ptn_addr_h = (sp_ptn_addr_l + 8) & 0xFFFF
@@ -532,8 +532,8 @@ class PPU {
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
 
                 if((this.render.spriteScanline[i].getAttr() & 0x40) != 0){
-                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString(2).split("").reverse().join(""),2) & 0xFF
-                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString(2).split("").reverse().join(""),2) & 0xFF
+                    sp_ptn_data_l = parseInt((sp_ptn_data_l & 0xFF).toString(2).padStart(8, '0').split("").reverse().join(""),2) & 0xFF
+                    sp_ptn_data_h = parseInt((sp_ptn_data_h & 0xFF).toString(2).padStart(8, '0').split("").reverse().join(""),2) & 0xFF
                 }
 
                 this.render.sp_s_ptn_l[i] = sp_ptn_data_l
@@ -546,7 +546,7 @@ class PPU {
         if(cycle == 257){
             this.render.resetSpriteScanline()
             for(var entry = 0; (entry < 64) && (this.render.spriteCount <= SPRITE_SCANLINE_MAX); entry++){
-                var diff = (this.pixelIter.getScanline() - this.oam.getY(entry)) & 0xFFFF
+                var diff = (this.pixelIter.getScanline() - this.oam.getY(entry))// & 0xFFFF
                 if(diff > 0 && diff < (this.ctrl.getSpriteH())){
                     if(this.render.spriteCount < SPRITE_SCANLINE_MAX){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
