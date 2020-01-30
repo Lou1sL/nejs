@@ -224,16 +224,15 @@ class CPU{
     STEP(){
         var opcode = this.fetchOpcode()
         var addr = this.fetchAddr(opcode)
-        var data = addr == null ? null : this.busR(addr)
         var mnem = opcode['mnem']
         var cycle = opcode['cycle']
 
              if(mnem == 'NOP') { /** ^_^ */ }
-        else if(mnem == 'LDA') { this.acc = data; this.srNZ(this.acc) }
+        else if(mnem == 'LDA') { this.acc = this.busR(addr); this.srNZ(this.acc) }
         else if(mnem == 'STA') { this.busW(addr,this.acc) }
-        else if(mnem == 'LDX') { this.x = data; this.srNZ(this.x) }
+        else if(mnem == 'LDX') { this.x = this.busR(addr); this.srNZ(this.x) }
         else if(mnem == 'STX') { this.busW(addr,this.x) }
-        else if(mnem == 'LDY') { this.y = data; this.srNZ(this.y) }
+        else if(mnem == 'LDY') { this.y = this.busR(addr); this.srNZ(this.y) }
         else if(mnem == 'STY') { this.busW(addr,this.y) }
 
         else if(mnem == 'TAX') { this.x = this.acc; this.srNZ(this.x) }
@@ -244,6 +243,7 @@ class CPU{
         else if(mnem == 'TSX') { this.x = this.sp; this.srNZ(this.x) }
 
         else if(mnem == 'ADC') {
+            var data = this.busR(addr)
             var res = (this.acc + data + ((this.sr & C) != 0 ? 1 : 0))
             if((this.sr & D) != 0){
                 if(((this.acc & 0x0F) + (data & 0x0F) + ((this.sr & C) != 0 ? 1 : 0)) > 9) res += 6
@@ -258,7 +258,7 @@ class CPU{
             this.acc = res & 0xFF
         }
         else if(mnem == 'SBC') {
-            var n = 0xFF - data
+            var n = 0xFF - this.busR(addr)
             var res = (this.acc + n + ((this.sr & C) != 0 ? 1 : 0))
             this.srNZ(res & 0xFF)
             this.srV(n,this.acc,res)
@@ -271,27 +271,29 @@ class CPU{
         }
 
         else if(mnem == 'BIT') {
+            var data = this.busR(addr)
             var res = this.acc & data; this.srZ(res)
             if((data & N) != 0) { this.sr |= N } else { this.sr &= (~N) }
             if((data & V) != 0) { this.sr |= V } else { this.sr &= (~V) }
         }
-        else if(mnem == 'CMP') { var res = this.acc - data; this.srNZC(res & 0xFF,res >= 0) }
-        else if(mnem == 'CPX') { var res = this.x   - data; this.srNZC(res & 0xFF,res >= 0) }
-        else if(mnem == 'CPY') { var res = this.y   - data; this.srNZC(res & 0xFF,res >= 0) }
+        else if(mnem == 'CMP') { var res = this.acc - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
+        else if(mnem == 'CPX') { var res = this.x   - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
+        else if(mnem == 'CPY') { var res = this.y   - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
 
         else if(mnem == 'INX') { this.x = (this.x + 1) & 0xFF; this.srNZ(this.x) }
         else if(mnem == 'INY') { this.y = (this.y + 1) & 0xFF; this.srNZ(this.y) }
-        else if(mnem == 'INC') { var v = (data + 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
+        else if(mnem == 'INC') { var v = (this.busR(addr) + 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
 
         else if(mnem == 'DEX') { this.x = (this.x - 1) & 0xFF; this.srNZ(this.x) }
         else if(mnem == 'DEY') { this.y = (this.y - 1) & 0xFF; this.srNZ(this.y) }
-        else if(mnem == 'DEC') { var v = (data - 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
+        else if(mnem == 'DEC') { var v = (this.busR(addr) - 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
 
-        else if(mnem == 'AND') { this.acc &= data; this.srNZ(this.acc) }
-        else if(mnem == 'ORA') { this.acc |= data; this.srNZ(this.acc) }
-        else if(mnem == 'EOR') { this.acc ^= data; this.srNZ(this.acc) }
+        else if(mnem == 'AND') { this.acc &= this.busR(addr); this.srNZ(this.acc) }
+        else if(mnem == 'ORA') { this.acc |= this.busR(addr); this.srNZ(this.acc) }
+        else if(mnem == 'EOR') { this.acc ^= this.busR(addr); this.srNZ(this.acc) }
 
         else if(mnem == 'ROL' && (opcode['addressing'] != 'ACCU')) {
+            var data = this.busR(addr)
             var v = ((data << 1) | (((this.sr & C) == 0)? 0 : 1)) & 0xFF
             this.srNZC(v,data >= 0x80)
             this.busW(addr, v)
@@ -302,6 +304,7 @@ class CPU{
             this.acc = v
         }
         else if(mnem == 'ROR' && (opcode['addressing'] != 'ACCU')) {
+            var data = this.busR(addr)
             var v = (data >> 1) | ((((this.sr & C) == 0)? 0 : 1) << 7)
             this.srNZC(v,(data & 1) != 0)
             this.busW(addr,v)
@@ -313,6 +316,7 @@ class CPU{
         }
 
         else if(mnem == 'ASL' && (opcode['addressing'] != 'ACCU')) {
+            var data = this.busR(addr)
             var v = (data << 1) & 0xFF
             this.srNZC(v,data >= 0x80)
             this.busW(addr, v)
@@ -324,6 +328,7 @@ class CPU{
         }
 
         else if(mnem == 'LSR' && (opcode['addressing'] != 'ACCU')) {
+            var data = this.busR(addr)
             var v = (data >> 1) & 0xFF
             this.srNZC(v,(data & 1) != 0)
             this.busW(addr,v)
@@ -366,7 +371,7 @@ class CPU{
 
         else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
 
-        return { pc:this.getPC(), mnem, addr, data, cycle }
+        return { pc:this.getPC(), mnem, addr, cycle }
     }
 
     printStatus() {

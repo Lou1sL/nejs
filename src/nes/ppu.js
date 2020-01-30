@@ -361,11 +361,16 @@ class PPU {
     //0x2007 PPUDATA
     REG_DATA_R (){
         //Nametable -> delay, palette -> no delay.
-        var res = this.reg_buffer
-        this.reg_buffer = this.busR()
-        if(this.v.get() >= 0x3F00) res = this.reg_buffer
-        //this.incAddr()
-        return res
+        var data
+        if((this.v.get() & 0x3FFF) >= 0x3F00){
+            data = this.busR()
+        }
+        else{
+            data = this.reg_buffer
+            this.reg_buffer = this.busR()
+        }
+        this.incAddr()
+        return data
     }
     //0x2000 PPUCTRL
     REG_CTRL_W (val){
