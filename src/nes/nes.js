@@ -7,11 +7,13 @@ import { CPUBus, PPUBus, MIRRORING } from './bus'
 import CPU from './cpu'
 import PPU from './ppu'
 import APU from './apu'
+import { BUTTON, Joypad } from './joypad'
 
-import fs from 'fs'
 
 
 /**
+
+import fs from 'fs'
 //--CPU Test program------
 var rom_test = fs.readFileSync('./6502_functional_test.bin', null)
 function CPU_BUS_TEST(){this.r=function(addr){return rom_test[addr]};this.w=function(addr,data){rom_test[addr]=data}}
@@ -53,10 +55,13 @@ class NES {
         
         this.cpu = new CPU(this.cpubus)
         this.ppu = new PPU(this.ppubus,this.screen)
+
+        this.pad = new Joypad()
         
         this.cpubus.bindPPU(this.ppu)
         this.cpubus.bindPRGROM(this.mapper.prg)
         this.cpubus.bindWRAM(this.mapper.wram)
+        this.cpubus.bindJoypad(this.pad)
         
         this.ppubus.bindCPU(this.cpu)
         this.ppubus.setMirroring(this.mapper.isHori ? MIRRORING.HORIZONTAL : MIRRORING.VERTICAL)
@@ -74,12 +79,22 @@ class NES {
             this.ppu.STEP()
             cycle += cpures.cycle
         }
-        //console.log('s')
-        //console.log(cpures)
     }
     rst(){
         this.cpu.RST()
         this.ppu.RST()
+    }
+    keyPress(keyCode){
+        console.log('KeyPress:'+keyCode)
+
+        if(keyCode == 107) this.pad.p0Press(BUTTON.A     )
+        if(keyCode == 108) this.pad.p0Press(BUTTON.B     )
+        if(keyCode == 110) this.pad.p0Press(BUTTON.SELECT)
+        if(keyCode == 109) this.pad.p0Press(BUTTON.START )
+        if(keyCode == 119) this.pad.p0Press(BUTTON.UP    )
+        if(keyCode == 115) this.pad.p0Press(BUTTON.DOWN  )
+        if(keyCode ==  97) this.pad.p0Press(BUTTON.LEFT  )
+        if(keyCode == 100) this.pad.p0Press(BUTTON.RIGHT )
     }
 }
 

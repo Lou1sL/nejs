@@ -17,11 +17,15 @@ export default {
     destroyed(){  },
     methods:{ 
         selectedFile() {
+            var self = this
             let file = this.$refs.myFile.files[0]
             let reader = new FileReader()
             reader.readAsArrayBuffer(file)
             reader.onload =  evt => { 
                 this.nes = new NES(this.$refs.myCanvas.getContext('2d'),new Uint8Array(evt.target.result))
+                window.addEventListener("keypress", function(e) {
+                    self.nes.keyPress(e.keyCode)
+                }.bind(this))
                 this.step()
             }
             reader.onerror = evt => { console.error(evt) }

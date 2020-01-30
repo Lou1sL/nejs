@@ -1,6 +1,5 @@
 
 
-
 //Ref: http://nesdev.com/NESDoc.pdf Page.34 Appendix B
 
 /** 
@@ -61,8 +60,10 @@ const CPU_MEM_IO_APU_XXXX = 0x4013  // TODO
 const CPU_MEM_IO_PPU_ODMA = 0x4014  // OAMDMA      aaaa aaaa    w
 /*
 const CPU_MEM_IO_APU_XXXX = 0x4015  // TODO
-const CPU_MEM_IO_PAD_XXXX = 0x4016  // TODO
-const CPU_MEM_IO_PAD_XXXX = 0x4017  // TODO
+*/
+const CPU_MEM_IO_PAD_PAD0 = 0x4016  // JOYPAD NO.0
+const CPU_MEM_IO_PAD_PAD1 = 0x4017  // JOYPAD NO.1
+/*
 const CPU_MEM_IO_UNKNOWN  = 0x4018  // TODO ???
 const CPU_MEM_IO_UNKNOWN  = 0x4019  // TODO ???
 const CPU_MEM_IO_UNKNOWN  = 0x401A  // TODO ???
@@ -136,12 +137,15 @@ class CPUBus {
         this.exrom  = new Uint8Array(CPU_ExROM_SIZE )
         this.wram   = new Uint8Array(CPU_WRAM_SIZE  )
         this.prgrom = new Uint8Array(CPU_PRGROM_SIZE)
+        this.pad    = null
     }
 
     bindPPU   (ppu) { this.ppu = ppu    }
     bindPRGROM(rom) { this.prgrom = rom }
     bindWRAM  (ram) { this.wram = ram   }
     bindExROM (rom) { this.exrom = rom  }
+
+    bindJoypad(pad) { this.pad = pad    }
 
     r(addr){
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
@@ -162,6 +166,14 @@ class CPUBus {
         //TODO APU
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             return 0
+        }
+        else if(addr==CPU_MEM_IO_PAD_PAD0){
+            if(this.pad != null) return this.pad.r0()
+            else return 0
+        }
+        else if(addr==CPU_MEM_IO_PAD_PAD1){
+            if(this.pad != null) return this.pad.r1()
+            else return 0
         }
         //TODO APU
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
@@ -191,6 +203,9 @@ class CPUBus {
         //TODO APU
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             this.ppu.REG_ODMA_W(data,this)
+        }
+        else if(addr==CPU_MEM_IO_PAD_PAD0){
+            if(this.pad != null) this.pad.w(data)
         }
         //TODO APU
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
