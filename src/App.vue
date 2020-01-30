@@ -1,7 +1,11 @@
 <template>
     <div id="app">
+        <h3> NEJS </h3>
+        <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内(目前只支持全部Mapper0游戏)。 </h3>
+        <h3> 键位：W:↑  A:← S:↓  D:→  K:B  L:A  Z:SELECT  X:START  </h3>
         <input type="file" ref="myFile" @change="selectedFile"><br/>
         <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
+        
     </div>
 </template>
 
