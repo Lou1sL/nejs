@@ -84,20 +84,10 @@ class NES {
         this.cpu.RST()
         this.ppu.RST()
     }
-    keyPress(keyCode){
-        console.log('KeyPress:'+keyCode)
-
-        if(keyCode == 107) this.pad.p0Press(BUTTON.A     )
-        if(keyCode == 108) this.pad.p0Press(BUTTON.B     )
-        if(keyCode == 110) this.pad.p0Press(BUTTON.SELECT)
-        if(keyCode == 109) this.pad.p0Press(BUTTON.START )
-        if(keyCode == 119) this.pad.p0Press(BUTTON.UP    )
-        if(keyCode == 115) this.pad.p0Press(BUTTON.DOWN  )
-        if(keyCode ==  97) this.pad.p0Press(BUTTON.LEFT  )
-        if(keyCode == 100) this.pad.p0Press(BUTTON.RIGHT )
-    }
+    btnDown (btn) { this.pad.btnDown(btn) }
+    btnUp   (btn) { this.pad.btnUp(btn)   }
 }
 
-export default NES
+export { BUTTON, NES }
 
 

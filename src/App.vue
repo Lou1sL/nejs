@@ -7,28 +7,47 @@
 
 <script>
 
-import NES from './nes/nes'
+import { BUTTON, NES } from './nes/nes'
 
 export default {
     name: "nejs",
     data() { return { isDestory:false } },
-    created() {  },
+    created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){  },
     destroyed(){  },
     methods:{ 
         selectedFile() {
-            var self = this
-            let file = this.$refs.myFile.files[0]
             let reader = new FileReader()
-            reader.readAsArrayBuffer(file)
-            reader.onload =  evt => { 
+            reader.readAsArrayBuffer(this.$refs.myFile.files[0])
+            reader.onload = evt => {
                 this.nes = new NES(this.$refs.myCanvas.getContext('2d'),new Uint8Array(evt.target.result))
-                window.addEventListener("keypress", function(e) {
-                    self.nes.keyPress(e.keyCode)
-                }.bind(this))
                 this.step()
             }
             reader.onerror = evt => { console.error(evt) }
+        },
+        onKeyDown(e){
+            if(this.nes == null) return
+            //console.log(e)
+            if(e.key == "l" ) this.nes.btnDown(BUTTON.A      )
+            if(e.key == "k" ) this.nes.btnDown(BUTTON.B      )
+            if(e.key == "z" ) this.nes.btnDown(BUTTON.SELECT )
+            if(e.key == "x" ) this.nes.btnDown(BUTTON.START  )
+            if(e.key == "w" ) this.nes.btnDown(BUTTON.UP     )
+            if(e.key == "s" ) this.nes.btnDown(BUTTON.DOWN   )
+            if(e.key == "a" ) this.nes.btnDown(BUTTON.LEFT   )
+            if(e.key == "d" ) this.nes.btnDown(BUTTON.RIGHT  )
+        },
+        onKeyUp(e){
+            if(this.nes == null) return
+            //console.log(e)
+            if(e.key == "l" ) this.nes.btnUp(BUTTON.A      )
+            if(e.key == "k" ) this.nes.btnUp(BUTTON.B      )
+            if(e.key == "z" ) this.nes.btnUp(BUTTON.SELECT )
+            if(e.key == "x" ) this.nes.btnUp(BUTTON.START  )
+            if(e.key == "w" ) this.nes.btnUp(BUTTON.UP     )
+            if(e.key == "s" ) this.nes.btnUp(BUTTON.DOWN   )
+            if(e.key == "a" ) this.nes.btnUp(BUTTON.LEFT   )
+            if(e.key == "d" ) this.nes.btnUp(BUTTON.RIGHT  )
         },
         step(){
             this.nes.step()

@@ -14,30 +14,26 @@ const BUTTON = {
 class Joypad {
     constructor(){
         this.strobe = false
-        this.data0   = 0
-        this.data1   = 0
-        this.index0  = 0
-        this.index1  = 0
+        this.reg   = 0
+        this.keyBuffer = 0
     }
-
+    //0x4016
     w(val) {
-        this.strobe = val
-        if(this.strobe!=0){ this.index0 = 0 }
-     }
+        this.strobe = val != 0
+        if(this.strobe){ this.reg = this.keyBuffer }
+    }
+    //0x4016
     r0(){
-        var s = 0
-        if(this.index0 < 8 && (((this.data0 >>> this.index0)&1)!=0)){ s = 1 }
-        this.index0++
-        if(this.strobe!=0){ this.index0 = 0 }
-        return s
+        if(this.strobe){ return this.keyBuffer | BUTTON.A }
+        var data = this.reg & 1
+        this.reg >>>= 1
+        return data
     }
-    r1(){
-        var s = 0
-        return s
-    }
+    //0x4017
+    r1(){ return 0 }
 
-    p0Press(button){ this.data0 = button; console.log(this.data0.toString(2)) }
-    p1Press(button){ this.data1 = button }
+    btnDown (button) { this.keyBuffer |=  button }
+    btnUp   (button) { this.keyBuffer &= ~button }
 }
 
 
