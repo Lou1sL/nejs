@@ -107,6 +107,8 @@ class CPU{
         this.sp  = 0xFF
         this.sr  = ~(N|V|B|D|I|Z|C)
         this.bus = bus
+
+        this.cycleRemain = 0
     }
     //https://www.pagetable.com/?p=410
     interrupt(int,sr){
@@ -221,7 +223,7 @@ class CPU{
         else { return null }
     } 
 
-    STEP(){
+    step(){
         var opcode = this.fetchOpcode()
         var addr = this.fetchAddr(opcode)
         var mnem = opcode['mnem']
@@ -372,6 +374,11 @@ class CPU{
         else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
 
         return { pc:this.getPC(), mnem, addr, cycle }
+    }
+
+    clock() {
+        if(this.cycleRemain <= 0) this.cycleRemain = this.step().cycle
+        else this.cycleRemain--
     }
 
     printStatus() {

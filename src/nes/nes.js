@@ -66,13 +66,20 @@ class NES {
     }
     step(){
         //https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
-        var cycle = 0
-        while(cycle<29780){
-            var cpures = this.cpu.STEP()
-            this.ppu.STEP()
-            this.ppu.STEP()
-            this.ppu.STEP()
-            cycle += cpures.cycle
+        //PPU: 89342 per frame
+        //CPU: 29780 per frame
+        
+        var lastCpuCycle = 0
+        for(var c=0;c<29780;c++){
+            //lastCpuCycle = 
+            //    (lastCpuCycle > 0) ? 
+            //    lastCpuCycle-1 : 
+            //    this.cpu.step().cycle
+            
+            this.cpu.clock()
+            this.ppu.clock()
+            this.ppu.clock()
+            this.ppu.clock()
         }
     }
     rst(){

@@ -220,10 +220,14 @@ const SCANLINE_STATE = { PRERENDER:0, VISIBLE:1, POSTRENDER:2, VBLANK:3, NOP:-1 
 const    CYCLE_STATE = { IDLE:0, FETCH_TILE:1, SPRITE_EVAL:2, PREFETCH:3, TBFETCH:4  }
 //https://wiki.nesdev.com/w/index.php/PPU_rendering#Cycle_0
 class RenderIterator {
-    constructor()    { this.scanline = 0; this.cycle = 1 }
-    reset      ()    { this.scanline = 0; this.cycle = 1 }
-    getScanline()    { return this.scanline              }
-    getCycle   ()    { return this.cycle                 }
+    constructor()    { this.frame = 0; this.scanline = 0; this.cycle = 0 }
+    reset      ()    { this.frame = 0; this.scanline = 0; this.cycle = 0 }
+    
+    getFrame   ()    { return this.frame    }
+    getScanline()    { return this.scanline }
+    getCycle   ()    { return this.cycle    }
+
+    isOddFrame ()    { return (this.frame & 1) == 1 }
 
     getState()  {
         var state = { scanline:SCANLINE_STATE.NOP, cycle:CYCLE_STATE.IDLE }
@@ -240,9 +244,11 @@ class RenderIterator {
         return state
     }
 
-    iterate(){
+    //https://wiki.nesdev.com/w/index.php/PPU_frame_timing
+    iterate(rendering){
         this.iterateCycle()
-        if(this.cycle == 0 && this.scanline == 0) this.cycle = 1
+        if(rendering && this.isOddFrame() && ((this.cycle == 339) && (this.scanline == 261)))
+        { this.scanline = 0; this.cycle = 0 }
     }
     iterateCycle(){
         this.cycle++
@@ -251,7 +257,7 @@ class RenderIterator {
     iterateScanline(){
         this.cycle = 0
         this.scanline++
-        if(this.scanline > 261) this.scanline = 0
+        if(this.scanline > 261) { this.scanline = 0; this.frame++ }
     }
 }
 
@@ -321,8 +327,6 @@ class PPU {
 
         this.pixelIter = new RenderIterator()
         this.render = new RenderInfo()
-
-        this.frame = 0
     }
     busR    ()          { return this.bus.r(this.v.get(),this.mask.isGray()) }
     busW    (data)      { this.bus.w(this.v.get(),data)                      }
@@ -343,7 +347,6 @@ class PPU {
         this.reg_buffer = 0
         this.pixelIter.reset()
         this.render.reset()
-        this.frame = 0
     }
 
     //0x2002 PPUSTATUS
@@ -605,7 +608,6 @@ class PPU {
         /** do nothing */
         if(this.pixelIter.getCycle() == 1){
             this.screen.updateCanvas()
-            //console.log('F:'+this.frame++)
         }
         
     }
@@ -617,7 +619,7 @@ class PPU {
     }
     
 
-    STEP(dbg=false){
+    clock(dbg=false){
         var state = this.pixelIter.getState()
 
         switch(state.scanline){
@@ -694,11 +696,9 @@ class PPU {
 
         this.screen.updatePixelPicker(cycle-1,scanline,this.busRAddr(0x3F00+(palet<<2)+pixel) & BIT_6)
 
-        this.pixelIter.iterate()
+        this.pixelIter.iterate(this.mask.isRenderBg() || this.mask.isRenderSp())
 
-
-        if(dbg)
-            console.log(this.pixelIter.getScanline()+' '+this.pixelIter.getCycle())
+        return { frame:this.pixelIter.getFrame(), scanline:this.pixelIter.getScanline(), cycle:this.pixelIter.getCycle() }
     }
 }
 
