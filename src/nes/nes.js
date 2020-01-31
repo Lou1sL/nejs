@@ -1,6 +1,3 @@
-//const fs                          = require('fs')
-const { createCanvas, loadImage } = require('canvas')
-
 import Screen from './screen'
 import Mapper from './mapper'
 import { CPUBus, PPUBus, MIRRORING } from './bus'
@@ -8,8 +5,6 @@ import CPU from './cpu'
 import PPU from './ppu'
 import APU from './apu'
 import { BUTTON, Joypad } from './joypad'
-
-
 
 /**
 
@@ -41,14 +36,14 @@ function dbgHexStr(val,pad=2)  { return val!=null?'0x'+val.toString(16).toUpperC
 
 
 class NES {
-    constructor(ctx,rom){
-        this.ctx = ctx
+    constructor(canvas,rom){
+        this.canvas = canvas
         this.init(rom)
     }
     init(rom){
         this.mapper = new Mapper(rom)
         
-        this.screen = new Screen(this.ctx)
+        this.screen = new Screen(this.canvas)
 
         this.cpubus = new CPUBus()
         this.ppubus = new PPUBus()

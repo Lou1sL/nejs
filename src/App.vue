@@ -1,11 +1,12 @@
 <template>
     <div id="app">
-        <h3> NEJS </h3>
-        <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内(目前只支持全部Mapper0游戏)。 </h3>
-        <h3> 键位：W:↑  A:← S:↓  D:→  K:B  L:A  Z:SELECT  X:START  </h3>
-        <input type="file" ref="myFile" @change="selectedFile"><br/>
         <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
+        <br>
+        <input type="file" ref="myFile" @change="selectedFile">
         
+        <h3> NEJS </h3>
+        <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内 (目前只支持Mapper0)，使用EXP2x算法优化分辨率</h3>
+        <h3> 键位：W:↑  A:← S:↓  D:→  K:B  L:A  Z:SELECT  X:START  </h3>
     </div>
 </template>
 
@@ -17,14 +18,19 @@ export default {
     name: "nejs",
     data() { return { isDestory:false } },
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
-    mounted(){  },
+    mounted(){ 
+        var ctx = this.$refs.myCanvas.getContext('2d')
+        var image = new Image()
+        image.src = './placeholder.png'
+        image.addEventListener("load", function(){ ctx.drawImage(image,0,0) }, false)
+     },
     destroyed(){  },
     methods:{ 
         selectedFile() {
             let reader = new FileReader()
             reader.readAsArrayBuffer(this.$refs.myFile.files[0])
             reader.onload = evt => {
-                this.nes = new NES(this.$refs.myCanvas.getContext('2d'),new Uint8Array(evt.target.result))
+                this.nes = new NES(this.$refs.myCanvas,new Uint8Array(evt.target.result))
                 this.step()
             }
             reader.onerror = evt => { console.error(evt) }

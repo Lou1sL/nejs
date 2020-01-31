@@ -22,7 +22,6 @@
   },
   "homepage": "https://github.com/RyuBAI/nejs#readme",
   "dependencies": {
-    "canvas": "^2.6.1",
     "vue": "^2.6.11"
   },
   "devDependencies": {
