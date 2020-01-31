@@ -5,7 +5,7 @@
         <input type="file" ref="myFile" @change="selectedFile">
         
         <h3> NEJS </h3>
-        <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内 (目前只支持Mapper0)，使用EXP2x算法优化分辨率</h3>
+        <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内 (目前只支持Mapper0)，使用EPX算法优化分辨率</h3>
         <h3> 键位：W:↑  A:← S:↓  D:→  K:B  L:A  Z:SELECT  X:START  </h3>
     </div>
 </template>
@@ -16,7 +16,7 @@ import { BUTTON, NES } from './nes/nes'
 
 export default {
     name: "nejs",
-    data() { return { isDestory:false } },
+    data() { return { isDestory:false,t:0,fps:50 } },
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){ 
         var ctx = this.$refs.myCanvas.getContext('2d')
@@ -31,6 +31,7 @@ export default {
             reader.readAsArrayBuffer(this.$refs.myFile.files[0])
             reader.onload = evt => {
                 this.nes = new NES(this.$refs.myCanvas,new Uint8Array(evt.target.result))
+                this.t = new Date().getTime()
                 this.step()
             }
             reader.onerror = evt => { console.error(evt) }
@@ -60,8 +61,11 @@ export default {
             if(e.key == "d" ) this.nes.btnUp(BUTTON.RIGHT  )
         },
         step(){
+            var targetDiff = 1000 / this.fps
+            var fix = (new Date().getTime() - this.t) - targetDiff
             this.nes.step()
-            if(!this.isDestory)setTimeout(()=>{ this.step() }, 16)
+            this.t = new Date().getTime()
+            if(!this.isDestory)setTimeout(()=>{ this.step() }, targetDiff - fix)
         }
      },
     computed: {  },

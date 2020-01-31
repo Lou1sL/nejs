@@ -247,8 +247,8 @@ class RenderIterator {
     //https://wiki.nesdev.com/w/index.php/PPU_frame_timing
     iterate(rendering){
         this.iterateCycle()
-        if(rendering && this.isOddFrame() && ((this.cycle == 339) && (this.scanline == 261)))
-        { this.scanline = 0; this.cycle = 0 }
+        if(rendering && this.isOddFrame() && ((this.scanline == 0) && (this.cycle == 0)))
+        { this.scanline = 0; this.cycle = 1 }
     }
     iterateCycle(){
         this.cycle++
@@ -490,7 +490,7 @@ class PPU {
 
 
 
-
+    //https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     scanlinePre(){
         var cycle = this.pixelIter.getCycle()
         if(cycle == 1){
