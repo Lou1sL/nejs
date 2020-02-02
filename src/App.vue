@@ -3,6 +3,7 @@
         <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
         <br>
         <input type="file" ref="myFile" @change="selectedFile">
+        <button v-on:click="reset">RESET</button>
         
         <h3> NEJS </h3>
         <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内 (目前只支持Mapper0)，使用EPX算法优化分辨率</h3>
@@ -16,13 +17,14 @@ import { BUTTON, NES } from './nes/nes'
 
 export default {
     name: "nejs",
-    data() { return { isDestory:false,t:0,fps:50 } },
+    data() { return { isDestory:false,t:0,mspf:16.666 } },
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){ 
         var ctx = this.$refs.myCanvas.getContext('2d')
         var image = new Image()
         image.src = './placeholder.png'
         image.addEventListener("load", function(){ ctx.drawImage(image,0,0) }, false)
+        this.nes = new NES(this.$refs.myCanvas)
      },
     destroyed(){  },
     methods:{ 
@@ -30,9 +32,9 @@ export default {
             let reader = new FileReader()
             reader.readAsArrayBuffer(this.$refs.myFile.files[0])
             reader.onload = evt => {
-                this.nes = new NES(this.$refs.myCanvas,new Uint8Array(evt.target.result))
-                this.t = new Date().getTime()
+                this.nes.init(new Uint8Array(evt.target.result))
                 this.step()
+                setTimeout(()=>{ this.step() }, this.mspf * 2)
             }
             reader.onerror = evt => { console.error(evt) }
         },
@@ -61,11 +63,13 @@ export default {
             if(e.key == "d" ) this.nes.btnUp(BUTTON.RIGHT  )
         },
         step(){
-            var targetDiff = 1000 / this.fps
-            var fix = (new Date().getTime() - this.t) - targetDiff
+            var fix = this.t != 0 ? (new Date().getTime() - this.t) - this.mspf : 0
             this.nes.step()
-            this.t = new Date().getTime()
-            if(!this.isDestory)setTimeout(()=>{ this.step() }, targetDiff - fix)
+            if(!this.isDestory)setTimeout(()=>{ this.step() }, this.mspf - fix)
+            this.t = new Date().getTime() 
+        },
+        reset(){
+            this.nes.rst()
         }
      },
     computed: {  },

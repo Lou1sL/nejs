@@ -36,29 +36,25 @@ function dbgHexStr(val,pad=2)  { return val!=null?'0x'+val.toString(16).toUpperC
 
 
 class NES {
-    constructor(canvas,rom){
-        this.canvas = canvas
-        this.init(rom)
+    constructor(canvas){
+        this.screen = new Screen(canvas)
+        this.cpubus = new CPUBus()
+        this.ppubus = new PPUBus()
+        this.cpu = new CPU(this.cpubus)
+        this.ppu = new PPU(this.ppubus,this.screen)
+        this.pad = new Joypad()
+
+        this.cpubus.bindPPU(this.ppu)
+        this.cpubus.bindJoypad(this.pad)
+
+        this.ppubus.bindCPU(this.cpu)
     }
     init(rom){
         this.mapper = new Mapper(rom)
-        
-        this.screen = new Screen(this.canvas)
 
-        this.cpubus = new CPUBus()
-        this.ppubus = new PPUBus()
-        
-        this.cpu = new CPU(this.cpubus)
-        this.ppu = new PPU(this.ppubus,this.screen)
-
-        this.pad = new Joypad()
-        
-        this.cpubus.bindPPU(this.ppu)
         this.cpubus.bindPRGROM(this.mapper.prg)
         this.cpubus.bindWRAM(this.mapper.wram)
-        this.cpubus.bindJoypad(this.pad)
         
-        this.ppubus.bindCPU(this.cpu)
         this.ppubus.setMirroring(this.mapper.isHori ? MIRRORING.HORIZONTAL : MIRRORING.VERTICAL)
         this.ppubus.bindCHRROM(this.mapper.chr)
 

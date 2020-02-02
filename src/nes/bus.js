@@ -140,12 +140,11 @@ class CPUBus {
         this.pad    = null
     }
 
-    bindPPU   (ppu) { this.ppu = ppu    }
+    bindPPU   (ppu) { this.ppu    = ppu }
     bindPRGROM(rom) { this.prgrom = rom }
-    bindWRAM  (ram) { this.wram = ram   }
-    bindExROM (rom) { this.exrom = rom  }
-
-    bindJoypad(pad) { this.pad = pad    }
+    bindWRAM  (ram) { this.wram   = ram }
+    bindExROM (rom) { this.exrom  = rom }
+    bindJoypad(pad) { this.pad    = pad }
 
     r(addr){
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
@@ -163,26 +162,33 @@ class CPUBus {
                 case CPU_MEM_IO_PPU_DATA: return this.ppu.REG_DATA_R()
             }
         }
-        //TODO APU
+        else if((addr >= 0x4000) && (addr <= 0x4013)){
+            //TODO APU
+        }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             return 0
         }
+        else if(addr==0x4015){
+            //TODO APU
+        }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
-            if(this.pad != null) return this.pad.r0()
-            else return 0
+            return this.pad.r0()
         }
         else if(addr==CPU_MEM_IO_PAD_PAD1){
-            if(this.pad != null) return this.pad.r1()
-            else return 0
+            return this.pad.r1()
         }
-        //TODO APU
+        else if((addr >= 0x4000) && (addr <= 0x4013)){
+            //TODO APU
+        }
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
             return this.exrom[addr-CPU_MEM_ExROM]
         }
         else if((addr>=CPU_MEM_PRG_ROM) && (addr<CPU_ADDR_SIZE)){
             return this.prgrom[addr-CPU_MEM_PRG_ROM]
+        }else{
+            console.error('CPU_BUS_R: invalid address. @0x'+addr.toString(16))
+            return 0
         }
-        return 0
     }
     w(addr,data){
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
@@ -200,35 +206,45 @@ class CPUBus {
                 case CPU_MEM_IO_PPU_DATA: this.ppu.REG_DATA_W(data); break
             }
         }
-        //TODO APU
-        else if(addr==CPU_MEM_IO_PPU_ODMA){
+        else if((addr >= 0x4000) && (addr <= 0x4013)){
+            //TODO APU
+        }
+        else if(addr==CPU_MEM_IO_PPU_ODMA){//console.log('ODMA')
+            this.ppu.bus.cpu.cycleRemain += 514
             this.ppu.REG_ODMA_W(data,this)
         }
-        else if(addr==CPU_MEM_IO_PAD_PAD0){
-            if(this.pad != null) this.pad.w(data)
+        else if(addr==0x4015){
+            //TODO APU
         }
-        //TODO APU
+        else if(addr==CPU_MEM_IO_PAD_PAD0){
+            this.pad.w(data)
+        }
+        else if(addr==CPU_MEM_IO_PAD_PAD1){
+            //TODO APU
+        }
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
             this.exrom[addr-CPU_MEM_ExROM] = data
         }
         else if((addr>=CPU_MEM_PRG_ROM) && (addr<CPU_ADDR_SIZE)){
             this.prgrom[addr-CPU_MEM_PRG_ROM] = data
+        }else{
+            console.error('CPU_BUS_W: invalid address. @0x'+addr.toString(16))
         }
     }
 }
 class PPUBus {
     constructor(){
-        this.vram0 = new Uint8Array(PPU_RAM_SIZE/2)
-        this.vram1 = new Uint8Array(PPU_RAM_SIZE/2)
-        this.chrrom =  new Uint8Array(PPU_CHR_SIZE)
-        this.plet = new Uint8Array(PPU_PLT_SIZE)
+        this.vram0  = new Uint8Array(PPU_RAM_SIZE/2)
+        this.vram1  = new Uint8Array(PPU_RAM_SIZE/2)
+        this.chrrom = new Uint8Array(PPU_CHR_SIZE)
+        this.plet   = new Uint8Array(PPU_PLT_SIZE)
 
         this.mirr = MIRRORING.VERTICAL
     }
-    bindCPU      (cpu) { this.cpu = cpu       }
-    nmi          ()    { this.cpu.NMI()       }
-    setMirroring (val) { this.mirr = val      }
-    bindCHRROM   (val) { this.chrrom = val    }
+    bindCPU      (cpu) { this.cpu    = cpu }
+    nmi          ()    { this.cpu.NMI()    }
+    setMirroring (val) { this.mirr   = val }
+    bindCHRROM   (val) { this.chrrom = val }
     
     r(addr,maskGray=false){
         addr &= 0x3FFF
@@ -259,8 +275,10 @@ class PPUBus {
             if (addr == 0x18) addr = 0x08
             if (addr == 0x1C) addr = 0x0C
             return this.plet[addr] & (maskGray ? 0x30 : 0xFF)
+        }else{
+            console.error('PPU_BUS_R: invalid address. @0x'+addr.toString(16))
+            return 0
         }
-        return 0
     }
     w(addr,data){
         addr &= 0x3FFF
@@ -291,7 +309,8 @@ class PPUBus {
             else if (addr == 0x18) addr = 0x08
             else if (addr == 0x1C) addr = 0x0C
             this.plet[addr] = data
-            
+        }else{
+            console.error('PPU_BUS_W: invalid address. @0x'+addr.toString(16))
         }
     }
 }
