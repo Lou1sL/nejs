@@ -17,7 +17,7 @@ import { BUTTON, NES } from './nes/nes'
 
 export default {
     name: "nejs",
-    data() { return { isDestory:false,t:0,mspf:16.666 } },
+    data() { return { mspf:20,timer:null } },
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){ 
         var ctx = this.$refs.myCanvas.getContext('2d')
@@ -32,9 +32,9 @@ export default {
             let reader = new FileReader()
             reader.readAsArrayBuffer(this.$refs.myFile.files[0])
             reader.onload = evt => {
+                if(this.timer!=null)clearTimeout(this.timer)
                 this.nes.init(new Uint8Array(evt.target.result))
                 this.step()
-                setTimeout(()=>{ this.step() }, this.mspf * 2)
             }
             reader.onerror = evt => { console.error(evt) }
         },
@@ -63,10 +63,10 @@ export default {
             if(e.key == "d" ) this.nes.btnUp(BUTTON.RIGHT  )
         },
         step(){
-            var fix = this.t != 0 ? (new Date().getTime() - this.t) - this.mspf : 0
+            var previousT = new Date().getTime()
             this.nes.step()
-            if(!this.isDestory)setTimeout(()=>{ this.step() }, this.mspf - fix)
-            this.t = new Date().getTime() 
+            var diff = new Date().getTime() - previousT
+            this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
         },
         reset(){
             this.nes.rst()
@@ -74,7 +74,7 @@ export default {
      },
     computed: {  },
     render(){  },
-    beforeDestroy () { this.isDestory = true }
+    beforeDestroy () { if(this.timer!=null)clearTimeout(this.timer) }
 }
 </script>
 
@@ -89,5 +89,4 @@ export default {
     #app {
         min-height:100vh;
     }
-
 </style>
