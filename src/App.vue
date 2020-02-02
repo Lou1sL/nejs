@@ -1,13 +1,46 @@
 <template>
     <div id="app">
-        <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
-        <br>
-        <input type="file" ref="myFile" @change="selectedFile">
-        <button v-on:click="reset">RESET</button>
-        
-        <h3> NEJS </h3>
-        <h3> 一个简单的纯js编写的FC模拟器，完全运行于浏览器内 (目前只支持Mapper0)，使用EPX算法优化分辨率</h3>
-        <h3> 键位：W:↑  A:← S:↓  D:→  K:B  L:A  Z:SELECT  X:START  </h3>
+        <div style="position:absolute; left: 50%; top:50px; width:512px; margin-left: -256px;">
+            <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
+            <br>
+            <input type="file" ref="myFile" @change="selectedFile">
+            <button v-on:click="reset" style="float: right;" class="button">RESET</button>
+            
+            <h3 class="title"> NEJS </h3>
+            <div class="info"> A simple NES emulator written in JavaScript.</div>
+            <div class="info"> Running in browser completely.</div>
+            <div class="info"> Using EPX algorithm on screen scaling.</div>
+            <div class="info"> PS: No audio & only supports Mapper0 currently.</div>
+            <a class="info" href="https://github.com/RyuBAI/nejs/">Github link</a>
+            <br>
+            <br>
+            <div class="table-wrapper">
+                <div class="table-title">KEYS</div>
+                <table>
+                    <tr>
+                        <th>UP</th>
+                        <th>LEFT</th>
+                        <th>DOWN</th>
+                        <th>RIGHT</th>
+                        <th>B</th>
+                        <th>A</th>
+                        <th>SELECT</th>
+                        <th>START</th>
+                    </tr>
+                    <tr>
+                        <td>w</td>
+                        <td>a</td>
+                        <td>s</td>
+                        <td>d</td>
+                        <td>k</td>
+                        <td>l</td>
+                        <td>z</td>
+                        <td>x</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="footer">2020 ryubai.com</div>
+        </div>
     </div>
 </template>
 
@@ -19,24 +52,16 @@ export default {
     name: "nejs",
     data() { return { mspf:20,timer:null } },
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
-    mounted(){ 
-        var ctx = this.$refs.myCanvas.getContext('2d')
-        var image = new Image()
-        image.src = './placeholder.png'
-        image.addEventListener("load", function(){ ctx.drawImage(image,0,0) }, false)
+    mounted(){
         this.nes = new NES(this.$refs.myCanvas)
-     },
+        fetch('./SuperMarioBros.nes')
+            .then(res => res.blob())
+            .then(blob => { this.loadFile(blob) })
+    },
     destroyed(){  },
     methods:{ 
         selectedFile() {
-            let reader = new FileReader()
-            reader.readAsArrayBuffer(this.$refs.myFile.files[0])
-            reader.onload = evt => {
-                if(this.timer!=null)clearTimeout(this.timer)
-                this.nes.init(new Uint8Array(evt.target.result))
-                this.step()
-            }
-            reader.onerror = evt => { console.error(evt) }
+            this.loadFile(this.$refs.myFile.files[0])
         },
         onKeyDown(e){
             if(this.nes == null) return
@@ -62,6 +87,16 @@ export default {
             if(e.key == "a" ) this.nes.btnUp(BUTTON.LEFT   )
             if(e.key == "d" ) this.nes.btnUp(BUTTON.RIGHT  )
         },
+        loadFile(file){
+            let reader = new FileReader()
+            reader.readAsArrayBuffer(file)
+            reader.onload = evt => {
+                if(this.timer!=null)clearTimeout(this.timer)
+                this.nes.init(new Uint8Array(evt.target.result))
+                this.step()
+            }
+            reader.onerror = evt => { console.error(evt) }
+        },
         step(){
             var previousT = new Date().getTime()
             this.nes.step()
@@ -81,12 +116,66 @@ export default {
 <style lang="less">
     html, body {
         height: auto;
-        min-height:100vh;
         width: 100%;
         overflow-x: hidden;
+        background-color: #000;
     }
-
-    #app {
-        min-height:100vh;
+    .title{
+        color: white;
+        text-align:center;
+        width:100%;
+        font-size: 18px;
+        margin-top:50px;
+    }
+    .info{
+        color: white;
+        text-align:left;
+        width: 100%;
+        font-size: 12px;
+    }
+    .table-wrapper{
+        color: white;
+        border: 1px solid white;
+    }
+    .table-title{
+        text-align:center;
+        width:100%;
+        font-size: 15px;
+    }
+    table{
+        text-align: center;
+        width: 100%;
+        font-size: 10px;
+    }
+    tr{
+        text-align: center;
+        width: 100%;
+    }
+    th, td{
+        text-align: center;
+        width: 70px;
+    }
+    .button{
+        background-color: rgb(255, 0, 0);
+        width:60px;
+        height:60px;
+        text-align: center;
+        color: white;
+        border: 1px solid rgb(255, 255, 255);
+        box-shadow: 0 0 10px 0 rgb(255, 0, 0);
+        -webkit-transition-duration: 0.4s; /* Safari */
+        transition-duration: 0.4s;
+    }
+    .button:hover{
+        background-color: rgb(192, 0, 0);
+        box-shadow: 0 0 15px 0 rgb(255, 0, 0);
+    }
+    .footer{
+        text-align: center;
+        width: 100%;
+        color: white;
+        font-size: 10px;
+        padding-top: 50px;
+        padding-bottom: 10px;
     }
 </style>
