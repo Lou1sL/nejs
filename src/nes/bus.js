@@ -210,7 +210,7 @@ class CPUBus {
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){//console.log('ODMA')
-            //this.ppu.bus.cpu.cycleRemain += 514
+            this.ppu.bus.cpu.cycleRemain += 514
             this.ppu.REG_ODMA_W(data,this)
         }
         else if(addr==0x4015){

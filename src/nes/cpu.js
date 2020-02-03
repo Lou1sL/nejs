@@ -108,7 +108,7 @@ class CPU{
         this.sr  = ~(N|V|B|D|I|Z|C)
         this.bus = bus
 
-        this.cycleRemain = 5
+        this.cycleRemain = 0
     }
     //https://www.pagetable.com/?p=410
     interrupt(int,sr){
