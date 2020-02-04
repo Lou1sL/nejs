@@ -16,32 +16,35 @@
             <a class="info" href="https://github.com/RyuBAI/nejs/">Github link</a>
             <br>
             <br>
-            <div class="table-wrapper">
-                <div class="table-title">KEY-MAPPING</div>
-                <table>
-                    <tr>
-                        <th>UP</th>
-                        <th>LEFT</th>
-                        <th>DOWN</th>
-                        <th>RIGHT</th>
-                        <th>B</th>
-                        <th>A</th>
-                        <th>SELECT</th>
-                        <th>START</th>
+            <div class="key-table-wrapper">
+                <div class="key-table-title">KEY_MAPPING</div>
+                <table class="key-table">
+                    <tr class="key-tr">
+                        <th class="key-th">UP</th>
+                        <th class="key-th">LEFT</th>
+                        <th class="key-th">DOWN</th>
+                        <th class="key-th">RIGHT</th>
+                        <th class="key-th">B</th>
+                        <th class="key-th">A</th>
+                        <th class="key-th">SELECT</th>
+                        <th class="key-th">START</th>
                     </tr>
                     <tr>
-                        <td>W</td>
-                        <td>A</td>
-                        <td>S</td>
-                        <td>D</td>
-                        <td>K</td>
-                        <td>L</td>
-                        <td>Z</td>
-                        <td>X</td>
+                        <td class="key-td">W</td>
+                        <td class="key-td">A</td>
+                        <td class="key-td">S</td>
+                        <td class="key-td">D</td>
+                        <td class="key-td">K</td>
+                        <td class="key-td">L</td>
+                        <td class="key-td">Z</td>
+                        <td class="key-td">X</td>
                     </tr>
                 </table>
             </div>
             <div class="footer">2020 ryubai.com</div>
+        </div>
+        <div style="position:absolute; left: 50%; top:50px; width:360px; margin-left: -680px;">
+            <ram-viewer ref="ramViewer"></ram-viewer>
         </div>
     </div>
 </template>
@@ -56,6 +59,7 @@ export default {
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){
         this.nes = new NES(this.$refs.myCanvas)
+        this.$refs.ramViewer.nes = this.nes
         fetch('./SuperMarioBros.nes')
             .then(res => res.blob())
             .then(blob => { this.loadFile(blob) })
@@ -104,10 +108,11 @@ export default {
             this.nes.step()
             var diff = new Date().getTime() - previousT
             this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
+            this.$refs.ramViewer.stepCall()
         },
         reset(){
             this.nes.rst()
-        }
+        },
      },
     computed: {  },
     render(){  },
@@ -122,6 +127,9 @@ export default {
         overflow-x: hidden;
         background-color: #000;
     }
+</style>
+
+<style scoped lang="less">
     input[type="file"] {
         display: none;
     }
@@ -134,7 +142,6 @@ export default {
         padding-bottom:5px;
         width: 60px;
         border: 2px solid white;
-        //box-shadow: 0 0 10px 0 rgb(255, 0, 0);
         font-family:sans-serif;
         font-size: 10px;
         -webkit-transition-duration: 0.4s;
@@ -150,7 +157,7 @@ export default {
         width:100%;
         font-size: 18px;
         margin-top:50px;
-        background-color: rgb(255, 255, 255);
+        background-color: white;
     }
     .info{
         color: white;
@@ -158,28 +165,29 @@ export default {
         width: 100%;
         font-size: 12px;
     }
-    .table-wrapper{
+    .key-table-wrapper{
         color: white;
         border: 1px dashed white;
     }
-    .table-title{
+    .key-table-title{
         text-align:center;
         width:100%;
+        padding:3px 0;
         font-size: 15px;
         background-color: rgb(220, 0, 0);
     }
-    table{
+    .key-table{
         text-align: center;
         width: 100%;
         font-size: 10px;
         background-color: rgb(140, 0, 0);
     }
-    tr{
+    .key-tr{
         text-align: center;
         width: 100%;
         border: 1px solid rgb(97, 97, 97);
     }
-    th, td{
+    .key-th, .key-td{
         text-align: center;
         width: 70px;
     }
