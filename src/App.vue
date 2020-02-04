@@ -5,7 +5,7 @@
             <br>
             <label for="file-upload" class="big-red-button">LOAD</label>
             <input id="file-upload" type="file" ref="myFile" @change="selectedFile">
-            <button v-on:click="reset" style="float: right;" class="big-red-button">RST</button>
+            <button v-on:click="reset" style="float:right;" class="big-red-button">RST</button>
             
             
             <h3 class="title"> NEJS </h3>
@@ -43,7 +43,7 @@
             </div>
             <div class="footer">2020 ryubai.com</div>
         </div>
-        <div style="position:absolute; left: 50%; top:50px; width:360px; margin-left: -680px;">
+        <div style="position:absolute; left:50%; top:50px; width:360px; margin-left: -680px;">
             <ram-viewer ref="ramViewer"></ram-viewer>
         </div>
     </div>
@@ -106,9 +106,9 @@ export default {
         step(){
             var previousT = new Date().getTime()
             this.nes.step()
+            this.$refs.ramViewer.stepCall()
             var diff = new Date().getTime() - previousT
             this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
-            this.$refs.ramViewer.stepCall()
         },
         reset(){
             this.nes.rst()
@@ -167,7 +167,7 @@ export default {
     }
     .key-table-wrapper{
         color: white;
-        border: 1px dashed white;
+        border: 1px dashed rgb(71, 71, 71);
     }
     .key-table-title{
         text-align:center;

@@ -1,6 +1,6 @@
 <template>
 <div class="wrapper">
-    <div :class="'title' + (autoUpdateRamView?'':' disabled')">CPU_RAM</div>
+    <div class="title">CPU_RAM</div>
     <div class="table-wrapper">
         <table :class="autoUpdateRamView?'':'disabled'">
             <tr>
@@ -13,20 +13,24 @@
             </tr>
         </table>
     </div>
-    <button v-on:click="autoUpdateRamView=!autoUpdateRamView" :class="'update-button' + (autoUpdateRamView?'':' disabled')">UPDATE</button>
-    <br>
-    <input width="50px">
-    <input width="100px">
-    <button v-on:click="updateRamView">SET</button>
-    <button v-on:click="updateRamView">LOCK</button>
+    
+    <div class="input-wrapper">
+        
+        <input v-model="inputAddr" placeholder="addr" @input="addrValidChk" :class="inputAddrValid?'':'invalid'">
+        <input v-model="inputData" placeholder="data" @input="dataValidChk" :class="inputDataValid?'':'invalid'">
+        <button v-on:click="inputSet=!inputSet" class="button disabled" style="margin:0px 2px;">SET</button>
+        <button v-on:click="inputLock=!inputLock" :class="'button' + (inputLock?'':' disabled')" style="margin:0px 2px;">LOCK</button>
+
+        <button v-on:click="autoUpdateRamView=!autoUpdateRamView" :class="'button' + (autoUpdateRamView?'':' disabled')" style="float:right;">UPDATE</button>
+    </div>
 </div>
 </template>
 
 <script>
 export default {
     name: "ram-viewer",
-    data() { return { ramViewBuffer:[],autoUpdateRamView:false } },
-    created() {  },
+    data() { return { ramViewBuffer:[],autoUpdateRamView:true,inputAddr:'00ce',inputData:'70',inputLock:true,inputSet:false,inputAddrValid:true,inputDataValid:true } },
+    created() { this.nes = null },
     mounted(){ this.updateRamView() /* Fill with 0 */ },
     destroyed(){  },
     methods:{
@@ -40,7 +44,22 @@ export default {
             }
         },
         stepCall(){
-            if(this.autoUpdateRamView && (this.nes != null)) this.updateRamView()
+            if(this.nes == null) return
+            if(this.autoUpdateRamView) this.updateRamView()
+            if((this.inputAddrValid && this.inputDataValid) && (this.inputSet || this.inputLock)){
+                var addr = parseInt("0x" + this.inputAddr)
+                var data = parseInt("0x" + this.inputData)
+                this.nes.cpubus.ram[addr] = data
+                if(this.inputSet)this.inputSet = false
+            }
+        },
+        addrValidChk(){ 
+            var a = parseInt("0x" + this.inputAddr)
+            this.inputAddrValid = (a>=0x0000 && a<=0x07FF)
+        },
+        dataValidChk(){ 
+            var a = parseInt("0x" + this.inputData)
+            this.inputDataValid = (a>=0x00 && a<=0xFF)
         }
      },
     computed: {  },
@@ -68,22 +87,20 @@ export default {
         width:100%;
         padding:3px 0;
         font-size: 15px;
-        background-color: rgb(220, 0, 0);
+        background-color: rgb(51, 51, 51);
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }
-    .title.disabled{
-        background-color: rgb(51, 51, 51);
-    }
     table{
         width: 100%;
-        background-color: rgb(140, 0, 0);
+        background-color: rgb(100, 100, 100);
         table-layout:fixed;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }
     table.disabled{
-        background-color: rgb(100, 100, 100);
+        background-color: rgb(78, 78, 78);
+        color :rgb(129, 129, 129);
     }
     th{
         width: 30px;
@@ -97,8 +114,8 @@ export default {
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     }
-    .update-button{
-        margin-top: 3px;
+    .button{
+        margin: 0px 5px;
         background-color: rgb(255, 0, 0);
         display: inline-block;
         text-align: center;
@@ -110,10 +127,24 @@ export default {
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }
-    .update-button.disabled{
+    .button.disabled{
         background-color: rgb(15, 15, 15);
     }
-    .update-button:hover{
+    .button:hover{
         box-shadow: 0 0 0px 2px white;
+        background-color: rgb(128, 0, 0);
+    }
+    .input-wrapper{
+        background-color: rgb(51, 51, 51);
+        padding: 10px 5px;
+    }
+    input{
+        width: 60px; 
+        color: white; 
+        background-color:black;
+        margin: 0px 5px;
+    }
+    input.invalid{
+        color: rgb(95, 95, 95);
     }
 </style>
