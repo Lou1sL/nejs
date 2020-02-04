@@ -45,7 +45,7 @@ class Screen {
         this.data[y * WIDTH + x] = PALETTE[index].color
     }
 
-    //EXP 2X
+    //EPX
     updateCanvas() {
         const src = this.data
         const dst = this.dataScr
@@ -65,18 +65,13 @@ class Screen {
                 const d = src[y2 * WIDTH + x ]
                 const l = src[y  * WIDTH + x0]
                 const r = src[y  * WIDTH + x2]
-
-                let d1 = (l === u && l !== d && u !== r) ? u : c
-                let d2 = (u === r && u !== l && r !== d) ? r : c
-                let d3 = (d === l && d !== r && l !== u) ? l : c
-                let d4 = (r === d && r !== u && d !== l) ? d : c
-
+                
                 const di = (y * (WIDTH * 2) + x) * 2
                 
-                dst[di + 0] = d1
-                dst[di + 1] = d2
-                dst[di + WIDTH * 2 + 0] = d3
-                dst[di + WIDTH * 2 + 1] = d4
+                dst[di + 0]             = (l === u && l !== d && u !== r) ? u : c
+                dst[di + 1]             = (u === r && u !== l && r !== d) ? r : c
+                dst[di + WIDTH * 2 + 0] = (d === l && d !== r && l !== u) ? l : c
+                dst[di + WIDTH * 2 + 1] = (r === d && r !== u && d !== l) ? d : c
             }
         }
 
