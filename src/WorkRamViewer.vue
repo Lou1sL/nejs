@@ -1,6 +1,6 @@
 <template>
 <div class="wrapper">
-    <div class="title">CPU_RAM</div>
+    <div class="title">CPU Memory</div>
     <div class="table-wrapper">
         <table :class="autoUpdateRamView?'':'disabled'">
             <tr>
@@ -28,7 +28,7 @@
 
 <script>
 export default {
-    name: "ram-viewer",
+    name: "work-ram-viewer",
     data() { return { ramViewBuffer:[],autoUpdateRamView:true,inputAddr:'00ce',inputData:'70',inputLock:true,inputSet:false,inputAddrValid:true,inputDataValid:true } },
     created() { this.nes = null },
     mounted(){ this.updateRamView() /* Fill with 0 */ },
@@ -39,7 +39,7 @@ export default {
             for(var r=0;r<0x80;r++){
                 this.ramViewBuffer[r] = []
                 var row = []
-                for(var c=0;c<0x10;c++) row[c] = ram[r*0x10+c].toString(16).toUpperCase().padStart(2,'0')
+                for(var c=0;c<0x10;c++) row[c] = ram[r*0x10+c].toString(16).padStart(2,'0')
                 this.$set(this.ramViewBuffer, r, row)
             }
         },

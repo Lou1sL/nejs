@@ -129,10 +129,10 @@ class CPU{
         else this.sr = ~(N|V|D|Z|C)
     }
     //All interrupts
-    RST() { this.interrupt(RST, this.sr & ~B) }
-    NMI() { this.interrupt(NMI, this.sr & ~B) }
-    IRQ() { this.interrupt(IRQ, this.sr & ~B) }
-    BRK() { this.interrupt(IRQ, this.sr |  B) }
+    RST() { this.interrupt(RST, this.sr & ~B); this.cycleRemain = 8 }
+    NMI() { this.interrupt(NMI, this.sr & ~B); this.cycleRemain = 8 }
+    IRQ() { this.interrupt(IRQ, this.sr & ~B); this.cycleRemain = 7 }
+    BRK() { this.interrupt(IRQ, this.sr |  B); this.cycleRemain = 7 }
     //PC in 16-bit
     getPC() { return this.pcl | (this.pch << 8)                   }
     pc(val) { this.pcl = val & 0xFF; this.pch = (val >> 8) & 0xFF }
@@ -184,20 +184,18 @@ class CPU{
      * zeropage y-indexed : R(pc) + y
      * absolute y-indexed : R16(pc) + y
      * indirect y-indexed : R16(R(pc)) + y !
-     * 
-     * !:R16() 8-bit lo-addr page overflow should occur??
      */
-    addrIMME()   { return this.getPC() }
-    addrRELA()   { return this.getPC() }
-    addrZP()     { return this.busR(this.getPC())          }
-    addrZPX()    { return (this.addrZP() + this.x) & 0xFF  }
-    addrZPY()    { return (this.addrZP() + this.y) & 0xFF  }
-    addrABS()    { return this.busR16(this.getPC())        }
-    addrABSX()   { return (this.addrABS() + this.x) & 0xFFFF }
-    addrABSY()   { return (this.addrABS() + this.y) & 0xFFFF }
-    addrINDIR()  { return this.busR16(this.addrABS())                    }
-    addrXINDIR() { return this.busR16(this.addrZPX())                    }
-    addrINDIRY() { return (this.busR16(this.addrZP()) + this.y) & 0xFFFF }
+    addrIMME()   { var result = this.getPC();                         return { addr:result, cycle:0 } }
+    addrRELA()   { var result = this.getPC();                         return { addr:result, cycle:0 } }
+    addrZP()     { var result = this.busR(this.getPC());              return { addr:result, cycle:0 } }
+    addrZPX()    { var result = (this.addrZP().addr + this.x) & 0xFF; return { addr:result, cycle:0 } }
+    addrZPY()    { var result = (this.addrZP().addr + this.y) & 0xFF; return { addr:result, cycle:0 } }
+    addrABS()    { var result = this.busR16(this.getPC());       return { addr:result, cycle:0 } }
+    addrABSX()   { var from = this.addrABS().addr; var result = (from + this.x) & 0xFFFF; return { addr:result, cycle:this.isXBound(from,result)?1:0 } }
+    addrABSY()   { var from = this.addrABS().addr; var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXBound(from,result)?1:0 } }
+    addrINDIR()  { var result = this.busR16(this.addrABS().addr);     return { addr:result, cycle:0 } }
+    addrXINDIR() { var result = this.busR16(this.addrZPX().addr);     return { addr:result, cycle:0 } }
+    addrINDIRY() { var from = this.busR16(this.addrZP().addr); var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXBound(from,result)?1:0 } }
 
     //Get opcode data then count PC
     fetchOpcode() {
@@ -207,8 +205,8 @@ class CPU{
     }
     fetchAddr(opcode) {
         var addressing = opcode['addressing']
-             if(addressing == 'IMPL') { return null }
-        else if(addressing == 'ACCU') { return null }
+             if(addressing == 'IMPL') { return { addr:null, cycle:0 } }
+        else if(addressing == 'ACCU') { return { addr:null, cycle:0 } }
         else if(addressing == 'IMME') { var d = this.addrIMME();   this.cc(1); return d }
         else if(addressing == 'RELA') { var d = this.addrRELA();   this.cc(1); return d }
         else if(addressing == '0PAG') { var d = this.addrZP();     this.cc(1); return d }
@@ -220,14 +218,15 @@ class CPU{
         else if(addressing == '0PGY') { var d = this.addrZPY();    this.cc(1); return d }
         else if(addressing == 'ABSY') { var d = this.addrABSY();   this.cc(2); return d }
         else if(addressing == 'IDRY') { var d = this.addrINDIRY(); this.cc(1); return d }
-        else { return null }
+        else { return { addr:null, cycle:0 } }
     } 
 
     step(){
         var opcode = this.fetchOpcode()
-        var addr = this.fetchAddr(opcode)
-        var mnem = opcode['mnem']
-        var cycle = opcode['cycle']
+        var oprand = this.fetchAddr(opcode)
+        var mnem   = opcode['mnem']
+        var addr   = oprand.addr
+        var cycle  = opcode['cycle'] + oprand.cycle
 
              if(mnem == 'NOP') { /** ^_^ */ }
         else if(mnem == 'LDA') { this.acc = this.busR(addr); this.srNZ(this.acc) }
@@ -378,7 +377,7 @@ class CPU{
 
     clock() {
         if(this.cycleRemain <= 0) this.cycleRemain = this.step().cycle
-        else this.cycleRemain--
+        this.cycleRemain--
     }
 
     printStatus() {

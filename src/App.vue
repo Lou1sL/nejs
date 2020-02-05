@@ -1,6 +1,6 @@
 <template>
     <div id="app">
-        <div style="position:absolute; left: 50%; top:50px; width:512px; margin-left: -256px;">
+        <div style="position:absolute; left:50%; top:50px; width:512px; margin-left: -256px;">
             <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
             <br>
             <label for="file-upload" class="big-red-button">LOAD</label>
@@ -44,7 +44,10 @@
             <div class="footer">2020 ryubai.com</div>
         </div>
         <div style="position:absolute; left:50%; top:50px; width:360px; margin-left: -680px;">
-            <ram-viewer ref="ramViewer"></ram-viewer>
+            <work-ram-viewer ref="WorkRamViewer"/>
+        </div>
+        <div style="position:absolute; left:50%; top:50px; width:360px; margin-left: 320px;">
+            <v-ram-viewer ref="VRamViewer"/>
         </div>
     </div>
 </template>
@@ -59,7 +62,8 @@ export default {
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){
         this.nes = new NES(this.$refs.myCanvas)
-        this.$refs.ramViewer.nes = this.nes
+        this.$refs.WorkRamViewer.nes = this.nes
+        this.$refs.VRamViewer.nes = this.nes
         fetch('./SuperMarioBros.nes')
             .then(res => res.blob())
             .then(blob => { this.loadFile(blob) })
@@ -106,7 +110,8 @@ export default {
         step(){
             var previousT = new Date().getTime()
             this.nes.step()
-            this.$refs.ramViewer.stepCall()
+            this.$refs.WorkRamViewer.stepCall()
+            this.$refs.VRamViewer.stepCall()
             var diff = new Date().getTime() - previousT
             this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
         },

@@ -20,11 +20,13 @@ const CPU_ExROM_SIZE    = 0x1FE0
 const CPU_WRAM_SIZE     = 0x2000
 const CPU_PRGROM_SIZE   = 0x8000
 
+// WORK-RAM
 const CPU_MEM_0PAGE       = 0x0000  // 0x0100
 const CPU_MEM_STACK       = 0x0100  // 0x0100
 const CPU_MEM_RAM         = 0x0200  // 0x0600
 //0x0800 - 0x1FFF                    : Mirrors of 0x0000 - 0x07FF (x3)
-// Registers (on CPU bus,for controlling PPU):
+
+// Registers for controlling PPU
 // https://wiki.nesdev.com/w/index.php/PPU_registers
 const CPU_MEM_IO_PPU_CTRL = 0x2000  // PPUCTRL     VPHB SINN    W
 const CPU_MEM_IO_PPU_MASK = 0x2001  // PPUMASK     BGRs bMmG    W
@@ -35,44 +37,47 @@ const CPU_MEM_IO_PPU_SCRL = 0x2005  // PPUSCROLL   xxxx xxxx    W(x2)
 const CPU_MEM_IO_PPU_ADDR = 0x2006  // PPUADDR     dddd dddd    W(x2)
 const CPU_MEM_IO_PPU_DATA = 0x2007  // PPUDATA     aaaa aaaa    W     R
 //0x2008 - 0x3FFF                   : Mirrors of 0x2000 - 0x2007 (x1023)
-/*
-const CPU_MEM_IO_APU_XXXX = 0x4000  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4001  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4002  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4003  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4004  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4005  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4006  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4007  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4008  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4009  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x400A  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x400B  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x400C  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x400D  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x400E  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x400F  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4010  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4011  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4012  // TODO
-const CPU_MEM_IO_APU_XXXX = 0x4013  // TODO
-*/
+
+// Registers for controlling APU
+// http://wiki.nesdev.com/w/index.php/APU_registers
+const CPU_MEM_IO_APU_PU1A = 0x4000  // 
+const CPU_MEM_IO_APU_PU1B = 0x4001  // 
+const CPU_MEM_IO_APU_PU1C = 0x4002  // 
+const CPU_MEM_IO_APU_PU1D = 0x4003  // 
+const CPU_MEM_IO_APU_PU2A = 0x4004  // 
+const CPU_MEM_IO_APU_PU2B = 0x4005  // 
+const CPU_MEM_IO_APU_PU2C = 0x4006  // 
+const CPU_MEM_IO_APU_PU2D = 0x4007  // 
+const CPU_MEM_IO_APU_TRIA = 0x4008  // 
+const CPU_MEM_IO_APU_TRIB = 0x4009  // 
+const CPU_MEM_IO_APU_TRIC = 0x400A  // 
+const CPU_MEM_IO_APU_TRID = 0x400B  // 
+const CPU_MEM_IO_APU_NOIA = 0x400C  // 
+const CPU_MEM_IO_APU_NOIB = 0x400D  // 
+const CPU_MEM_IO_APU_NOIC = 0x400E  // 
+const CPU_MEM_IO_APU_NOID = 0x400F  // 
+const CPU_MEM_IO_APU_DMCA = 0x4010  // 
+const CPU_MEM_IO_APU_DMCB = 0x4011  // 
+const CPU_MEM_IO_APU_DMCC = 0x4012  // 
+const CPU_MEM_IO_APU_DMCD = 0x4013  // 
 const CPU_MEM_IO_PPU_ODMA = 0x4014  // OAMDMA      aaaa aaaa    w
-/*
-const CPU_MEM_IO_APU_XXXX = 0x4015  // TODO
-*/
+const CPU_MEM_IO_APU_CTST = 0x4015  // 
 const CPU_MEM_IO_PAD_PAD0 = 0x4016  // JOYPAD NO.0
 const CPU_MEM_IO_PAD_PAD1 = 0x4017  // JOYPAD NO.1
-/*
-const CPU_MEM_IO_UNKNOWN  = 0x4018  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x4019  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x401A  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x401B  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x401C  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x401D  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x401E  // TODO ???
-const CPU_MEM_IO_UNKNOWN  = 0x401F  // TODO ???
-*/
+const CPU_MEM_IO_APU_FRAM = 0x4017  // 
+
+// CPU Test Mode
+// http://wiki.nesdev.com/w/index.php/CPU_Test_Mode
+const CPU_MEM_IO_TEST0    = 0x4018  // Test Mode, unused.
+const CPU_MEM_IO_TEST1    = 0x4019  // Test Mode, unused.
+const CPU_MEM_IO_TEST2    = 0x401A  // Test Mode, unused.
+const CPU_MEM_IO_TEST3    = 0x401B  // Test Mode, unused.
+const CPU_MEM_IO_TEST4    = 0x401C  // Test Mode, unused.
+const CPU_MEM_IO_TEST5    = 0x401D  // Test Mode, unused.
+const CPU_MEM_IO_TEST6    = 0x401E  // Test Mode, unused.
+const CPU_MEM_IO_TEST7    = 0x401F  // Test Mode, unused.
+
+// On cartridge
 const CPU_MEM_ExROM       = 0x4020  // 0x1FE0
 const CPU_MEM_SRAM        = 0x6000  // 0x2000
 const CPU_MEM_PRG_ROM     = 0x8000  // 0x8000
@@ -128,11 +133,57 @@ const PPU_RAM3_SWITCH   = 0b110000000000
 
 
 
+class DMATransfer {
+    constructor(bus){
+        this.bus = bus
+        this.reset()
+    }
+    reset(){
+        this.execute   = false
+        this.onDummy   = true
+        this.page      = 0x00
+        this.addr      = 0x00
+        this.data      = 0x00
+        this.evenClk   = 0
+    }
 
+    trigger(page){
+        this.execute = true
+        this.page = page & 0xFF
+        this.addr = 0x00
+    }
+
+    clockCount () { this.evenClk = (~this.evenClk) & 1    }
+    isEvenClk  () { return (this.evenClk & 1) == 0        }
+    isOngoing  () { return this.execute                   }
+
+    clock(){
+        if(this.execute){
+            if(this.onDummy){
+                if(!this.isEvenClk()) this.onDummy = false
+            }else{
+                if(this.isEvenClk()){
+                    this.data = this.bus.r((this.page << 8) | this.addr)
+                }else{
+                    this.bus.ppu.oam.setEle(this.addr,this.data)
+                    this.addr++
+                    if(this.addr>0xFF){
+                        this.addr = 0x00
+                        this.execute = false
+                        this.onDummy = true
+                    }
+                }
+            }
+        }
+        this.clockCount()
+    }
+}
 
 
 class CPUBus {
     constructor(){
+        this.dma    = new DMATransfer(this)
+
         this.ram    = new Uint8Array(CPU_RAM_SIZE   )
         this.exrom  = new Uint8Array(CPU_ExROM_SIZE )
         this.wram   = new Uint8Array(CPU_WRAM_SIZE  )
@@ -209,9 +260,8 @@ class CPUBus {
         else if((addr >= 0x4000) && (addr <= 0x4013)){
             //TODO APU
         }
-        else if(addr==CPU_MEM_IO_PPU_ODMA){//console.log('ODMA')
-            this.ppu.bus.cpu.cycleRemain += 514
-            this.ppu.REG_ODMA_W(data,this)
+        else if(addr==CPU_MEM_IO_PPU_ODMA){
+            this.dma.trigger(data)
         }
         else if(addr==0x4015){
             //TODO APU
@@ -246,7 +296,7 @@ class PPUBus {
     setMirroring (val) { this.mirr   = val }
     bindCHRROM   (val) { this.chrrom = val }
     
-    r(addr,maskGray=false){
+    r(addr){
         addr &= 0x3FFF
         if(addr >= 0 && addr < PPU_CHR_SIZE) return this.chrrom[addr]
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
@@ -274,7 +324,7 @@ class PPUBus {
             if (addr == 0x14) addr = 0x04
             if (addr == 0x18) addr = 0x08
             if (addr == 0x1C) addr = 0x0C
-            return this.plet[addr] & (maskGray ? 0x30 : 0xFF)
+            return this.plet[addr] & (this.cpu.bus.ppu.mask.isGray() ? 0x30 : 0xFF)
         }else{
             console.error('PPU_BUS_R: invalid address. @0x'+addr.toString(16))
             return 0

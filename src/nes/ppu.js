@@ -328,15 +328,15 @@ class PPU {
         this.pixelIter = new RenderIterator()
         this.render = new RenderInfo()
     }
-    busR    ()          { return this.bus.r(this.v.get(),this.mask.isGray()) }
-    busW    (data)      { this.bus.w(this.v.get(),data)                      }
-    busRAddr(addr)      { return this.bus.r(addr,        this.mask.isGray()) }
-    busWAddr(addr,data) { this.bus.w(addr,data)                              }
+    busR    ()          { return this.bus.r(this.v.get()) }
+    busW    (data)      { this.bus.w(this.v.get(),data)   }
+    busRAddr(addr)      { return this.bus.r(addr)         }
+    busWAddr(addr,data) { this.bus.w(addr,data)           }
 
     incAddr () { this.v.set(this.v.get() + this.ctrl.getAddrInc()) }
 
     RST (){
-        //this.oam.reset()
+        this.oam.reset()
         this.v.reset()
         this.t.reset()
         this.x.reset()
@@ -415,12 +415,6 @@ class PPU {
         this.busW(val)
         this.incAddr()
     }
-    //0x4019 OAMDMA
-    REG_ODMA_W (val,cpubus){ 
-        for(var a=0;a<0x100;a++)
-            this.oam.setEle((a+this.oam.getAddr()) & BIT_8,cpubus.r((val << 8) + a))
-    }
-
 
     incScrollX(){
         if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return

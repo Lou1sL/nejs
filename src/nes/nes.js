@@ -65,14 +65,16 @@ class NES {
         //PPU: 89342 per frame
         //CPU: 29780 per frame
         for(var c=0;c<29780;c++){
-            this.cpu.clock()
             this.ppu.clock()
             this.ppu.clock()
             this.ppu.clock()
+            if(!this.cpubus.dma.isOngoing())this.cpu.clock()
+            this.cpubus.dma.clock()
         }
     }
     rst(){
         this.cpu.RST()
+        this.cpubus.dma.reset() //Abort ongoing DMA transfer
         this.ppu.RST()
     }
     btnDown (btn) { this.pad.btnDown(btn) }
