@@ -17,7 +17,7 @@
             <br>
             <br>
             <div class="key-table-wrapper">
-                <div class="key-table-title">KEY_MAPPING</div>
+                <div class="key-table-title">Key Mapping</div>
                 <table class="key-table">
                     <tr class="key-tr">
                         <th class="key-th">UP</th>
