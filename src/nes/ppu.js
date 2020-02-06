@@ -478,64 +478,55 @@ class PPU {
         }
     }
 
-    
-    
-
-
-
-
     //https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-    scanlinePre(){
-        var cycle = this.pixelIter.getCycle()
-        if(cycle == 1) this.stat.clrAll()
-        if(cycle >= 280 && cycle <= 304) this.transferAddrY()
+    //Background
+    fetchNT(){
+        this.render.bg_nt = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
     }
+    fetchAT(){
+        var attr = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11) | (this.v.getNameTbX() << 10) | ((this.v.getCoarseY() >>> 2) << 3) | (this.v.getCoarseX() >>> 2))
+        attr >>>= ((this.v.getCoarseY() & 0x02) != 0) ? 4 : 0
+        attr >>>= ((this.v.getCoarseX() & 0x02) != 0) ? 2 : 0
+        this.render.bg_at = attr & 0x03
+    }
+    fetchBGL(){
+        this.render.bg_l = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) + (this.render.bg_nt << 4) + this.v.getFineY() + 0)
+    }
+    fetchBGH(){
+        this.render.bg_h = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) + (this.render.bg_nt << 4) + this.v.getFineY() + 8)
+    }
+    fetch(step){
+        this.updateShifter()
+        switch(step){
+            case 0 : this.reloadBgShifter(); this.fetchNT(); break
+            case 2 : this.fetchAT();                         break
+            case 4 : this.fetchBGL();                        break
+            case 6 : this.fetchBGH();                        break
+            case 7 : this.incScrollX();                      break
+        }
+    }
+    visibleScanline(cycle){
+        if((cycle>=  1) && (cycle<=256)) { this.fetch((cycle -   1) % 0x08)             }
+        if((cycle>=321) && (cycle<=336)) { this.fetch((cycle - 321) % 0x08)             }
+        if( cycle == 256               ) { this.incScrollY()                            }
+        if( cycle == 257               ) { this.reloadBgShifter(); this.transferAddrX() }
+        if( cycle==337  ||  cycle==339 ) { this.fetchNT()                               }
+    }
+    postRenderScanline(cycle){
+        /** do nothing */
+        if(cycle == 0                  ) this.screen.updateCanvas()
+    }
+    vBlankScanline(cycle){
+        if(cycle == 1                  ) { this.stat.setVBlank(); if(this.ctrl.isVBlank()) this.bus.nmi() }
+    }
+    prerenderScanline(cycle){
+        if(cycle == 1                  ) this.stat.clrAll()
+        if(cycle >= 280 && cycle <= 304) this.transferAddrY()
+        this.visibleScanline(cycle)
+    }
+    //Sprite
     scanlineRender(){
         var cycle = this.pixelIter.getCycle()
-
-        //Background
-        if ((cycle >= 2 && cycle <= 257) || (cycle >= 321 && cycle <= 337)){
-            this.updateShifter()
-            switch ((cycle - 1) % 8){
-                case 0 :
-                    this.reloadBgShifter()
-                    this.render.bg_nt = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
-                break
-                case 2 :
-                    this.render.bg_at = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11)
-                    | (this.v.getNameTbX() << 10)
-                    | ((this.v.getCoarseY() >>> 2) << 3)
-                    | (this.v.getCoarseX() >>> 2))
-
-                    if((this.v.getCoarseY() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 4) & BIT_8
-                    if((this.v.getCoarseX() & 0x02) != 0) this.render.bg_at = (this.render.bg_at >>> 2) & BIT_8
-                    this.render.bg_at &= 0x03
-                break
-                case 4 :
-                    this.render.bg_l = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) 
-					+ (this.render.bg_nt << 4) 
-                    + this.v.getFineY() + 0)
-                break
-                case 6 :
-                    this.render.bg_h = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) 
-                    + (this.render.bg_nt << 4) 
-                    + this.v.getFineY() + 8)
-                break
-                case 7 :
-                    this.incScrollX()
-                break
-            }
-        }
-        if(cycle == 256){
-            this.incScrollY()
-        }
-        if(cycle == 257){
-            this.reloadBgShifter()
-            this.transferAddrX()
-        }
-        if(cycle == 338 || cycle == 340){
-            this.render.bg_nt = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
-        }
         if(cycle == 340){
 
             for(var i=0;i<this.render.spriteCount;i++){
@@ -594,29 +585,17 @@ class PPU {
             else this.stat.clrOv()
         }
     }
-    scanlinePost(){
-        /** do nothing */
-        if(this.pixelIter.getCycle() == 1){
-            this.screen.updateCanvas()
-        }
-        
-    }
-    scanlineNmi(){
-        if(this.pixelIter.getCycle() == 1){
-            this.stat.setVBlank()
-            if(this.ctrl.isVBlank())this.bus.nmi()
-        }
-    }
     
 
     clock(dbg=false){
         var state = this.pixelIter.getState()
+        var cycle = this.pixelIter.getCycle()
 
         switch(state.scanline){
-            case SCANLINE_STATE.PRERENDER: this.scanlinePre(); this.scanlineRender(); break
-            case SCANLINE_STATE.VISIBLE: this.scanlineRender(); this.scanlineVisible(); break
-            case SCANLINE_STATE.POSTRENDER: this.scanlinePost(); break
-            case SCANLINE_STATE.VBLANK: this.scanlineNmi(); break
+            case SCANLINE_STATE.PRERENDER: this.prerenderScanline(cycle); break
+            case SCANLINE_STATE.VISIBLE: this.visibleScanline(cycle); this.scanlineRender(); this.scanlineVisible(); break
+            case SCANLINE_STATE.POSTRENDER: this.postRenderScanline(cycle); break
+            case SCANLINE_STATE.VBLANK: this.vBlankScanline(cycle); break
         }
         
         var bg_pixel = 0
