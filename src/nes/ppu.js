@@ -264,7 +264,7 @@ class RenderIterator {
 class RenderInfo {
     constructor(){
         //Background
-        this.bg_id = 0
+        this.bg_nt = 0
         this.bg_at = 0
         this.bg_l  = 0
         this.bg_h  = 0
@@ -286,7 +286,7 @@ class RenderInfo {
     }
 
     reset(){
-        this.bg_id = 0
+        this.bg_nt = 0
         this.bg_at = 0
         this.bg_l  = 0
         this.bg_h  = 0
@@ -479,7 +479,7 @@ class PPU {
     }
 
     
-
+    
 
 
 
@@ -487,11 +487,7 @@ class PPU {
     //https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     scanlinePre(){
         var cycle = this.pixelIter.getCycle()
-        if(cycle == 1){
-            this.stat.clrAll()
-            this.render.sp_s_ptn_h = new Uint8Array(SPRITE_SCANLINE_MAX)
-            this.render.sp_s_ptn_l = new Uint8Array(SPRITE_SCANLINE_MAX)
-        }
+        if(cycle == 1) this.stat.clrAll()
         if(cycle >= 280 && cycle <= 304) this.transferAddrY()
     }
     scanlineRender(){
@@ -503,7 +499,7 @@ class PPU {
             switch ((cycle - 1) % 8){
                 case 0 :
                     this.reloadBgShifter()
-                    this.render.bg_id = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
+                    this.render.bg_nt = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
                 break
                 case 2 :
                     this.render.bg_at = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11)
@@ -517,12 +513,12 @@ class PPU {
                 break
                 case 4 :
                     this.render.bg_l = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) 
-					+ (this.render.bg_id << 4) 
+					+ (this.render.bg_nt << 4) 
                     + this.v.getFineY() + 0)
                 break
                 case 6 :
                     this.render.bg_h = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) 
-                    + (this.render.bg_id << 4) 
+                    + (this.render.bg_nt << 4) 
                     + this.v.getFineY() + 8)
                 break
                 case 7 :
@@ -538,7 +534,7 @@ class PPU {
             this.transferAddrX()
         }
         if(cycle == 338 || cycle == 340){
-            this.render.bg_id = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
+            this.render.bg_nt = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
         }
         if(cycle == 340){
 
