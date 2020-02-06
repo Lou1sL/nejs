@@ -7,7 +7,7 @@
  * 
  * RAM       : 2048  Bytes = 0x0800 = 0x0100 0page + 0x0100 stack + 0x0600 ram
  * IO        : 40    Bytes = 0x0028 = 0x0008 ppu io + 0x0020 apu(except ODMA) io
- * External  : 49120 Bytes = 0xBFE0 = 0x1FE0 exrom + 0x2000 wram + 0x8000 prgrom
+ * External  : 49120 Bytes = 0xBFE0 = 0x1FE0 exrom + 0x2000 sram + 0x8000 prgrom
  * Mirrored  : 14328 Bytes = 0x37F8 = 0x0800*3 ram mirror + 0x0008*1023 io mirror
  * 
  * TOTAL     : 65536 Bytes (16-bit address)
@@ -17,7 +17,7 @@ const CPU_ADDR_SIZE     = 0x10000
 const CPU_RAM_SIZE      = 0x0800
 const CPU_RAM_ADDR_SIZE = 0x2000
 const CPU_ExROM_SIZE    = 0x1FE0
-const CPU_WRAM_SIZE     = 0x2000
+const CPU_SRAM_SIZE     = 0x2000
 const CPU_PRGROM_SIZE   = 0x8000
 
 // WORK-RAM
@@ -63,8 +63,8 @@ const CPU_MEM_IO_APU_DMCD = 0x4013  //
 const CPU_MEM_IO_PPU_ODMA = 0x4014  // OAMDMA      aaaa aaaa    w
 const CPU_MEM_IO_APU_CTST = 0x4015  // 
 const CPU_MEM_IO_PAD_PAD0 = 0x4016  // JOYPAD NO.0
-const CPU_MEM_IO_PAD_PAD1 = 0x4017  // JOYPAD NO.1
-const CPU_MEM_IO_APU_FRAM = 0x4017  // 
+const CPU_MEM_IO_PAD_PAD1 = 0x4017  // JOYPAD NO.1 R
+const CPU_MEM_IO_APU_FRAM = 0x4017  // W
 
 // CPU Test Mode
 // http://wiki.nesdev.com/w/index.php/CPU_Test_Mode
@@ -186,14 +186,14 @@ class CPUBus {
 
         this.ram    = new Uint8Array(CPU_RAM_SIZE   )
         this.exrom  = new Uint8Array(CPU_ExROM_SIZE )
-        this.wram   = new Uint8Array(CPU_WRAM_SIZE  )
+        this.sram   = new Uint8Array(CPU_SRAM_SIZE  )
         this.prgrom = new Uint8Array(CPU_PRGROM_SIZE)
         this.pad    = null
     }
 
     bindPPU   (ppu) { this.ppu    = ppu }
     bindPRGROM(rom) { this.prgrom = rom }
-    bindWRAM  (ram) { this.wram   = ram }
+    bindSRAM  (ram) { this.sram   = ram }
     bindExROM (rom) { this.exrom  = rom }
     bindJoypad(pad) { this.pad    = pad }
 

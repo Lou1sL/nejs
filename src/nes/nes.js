@@ -53,7 +53,7 @@ class NES {
         this.mapper = new Mapper(rom)
 
         this.cpubus.bindPRGROM(this.mapper.prg)
-        this.cpubus.bindWRAM(this.mapper.wram)
+        this.cpubus.bindSRAM(this.mapper.sram)
         
         this.ppubus.setMirroring(this.mapper.isHori ? MIRRORING.HORIZONTAL : MIRRORING.VERTICAL)
         this.ppubus.bindCHRROM(this.mapper.chr)
