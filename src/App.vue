@@ -3,8 +3,8 @@
         <div style="position:absolute; left:50%; top:50px; width:512px; margin-left: -256px;">
             <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
             <br>
-            <label for="file-upload" class="big-red-button">LOAD</label>
-            <input id="file-upload" type="file" ref="myFile" @change="selectedFile">
+            <label for="rom-upload" class="big-red-button">LOAD</label>
+            <input id="rom-upload" type="file" ref="myFile" @change="selectedFile">
             <button v-on:click="reset" style="float:right;" class="big-red-button">RST</button>
             
             
@@ -72,6 +72,7 @@ export default {
     methods:{ 
         selectedFile() {
             this.loadFile(this.$refs.myFile.files[0])
+            this.$refs.myFile.value = ""
         },
         onKeyDown(e){
             if(this.nes == null) return
