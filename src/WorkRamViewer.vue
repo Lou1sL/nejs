@@ -13,15 +13,17 @@
             </tr>
         </table>
     </div>
-    
-    <div class="input-wrapper">
-        
-        <input v-model="inputAddr" placeholder="addr" @input="addrValidChk" :class="inputAddrValid?'':'invalid'">
-        <input v-model="inputData" placeholder="data" @input="dataValidChk" :class="inputDataValid?'':'invalid'">
-        <button v-on:click="inputSet=!inputSet" class="button disabled" style="margin:0px 2px;">SET</button>
-        <button v-on:click="inputLock=!inputLock" :class="'button' + (inputLock?'':' disabled')" style="margin:0px 2px;">LOCK</button>
+    <button v-on:click="autoUpdateRamView=!autoUpdateRamView" :class="'button' + (autoUpdateRamView?'':' disabled')" style="width:100%;margin:3px 0px;">Auto Update</button>
 
-        <button v-on:click="autoUpdateRamView=!autoUpdateRamView" :class="'button' + (autoUpdateRamView?'':' disabled')" style="float:right;">UPDATE</button>
+    <div class="input-wrapper">
+        <div class="modify-row" v-for="(row, rowKey) in modify" :key="rowKey">
+            <input v-model="row.inputAddr" placeholder="addr(hex)" @input="addrValidChk(rowKey)" :class="row.inputAddrValid?'':'invalid'">
+            <input v-model="row.inputData" placeholder="data(hex)" @input="dataValidChk(rowKey)" :class="row.inputDataValid?'':'invalid'">
+            <button v-on:click="row.inputSet=!row.inputSet" class="button disabled" style="margin:0px 2px;">Set</button>
+            <button v-on:click="onLock(rowKey)" :class="'button' + (row.inputLock?'':' disabled')" style="margin:0px 2px;">Lock</button>
+            <button v-on:click="modify.splice(rowKey,1)" class="delrow-button" style="float:right;">×</button>
+        </div>
+        <button v-on:click="modify.push({ inputAddr:'', inputData:'', inputLock:false, inputSet:false, inputAddrValid:false, inputDataValid:false })" class="addrow-button">Add</button>
     </div>
 </div>
 </template>
@@ -29,7 +31,15 @@
 <script>
 export default {
     name: "work-ram-viewer",
-    data() { return { ramViewBuffer:[],autoUpdateRamView:true,inputAddr:'00ce',inputData:'70',inputLock:true,inputSet:false,inputAddrValid:true,inputDataValid:true } },
+    data() { 
+        return {
+            ramViewBuffer:[],
+            autoUpdateRamView:true,
+            modify:[
+                { inputAddr:'00ce', inputData:'70', inputLock:true, inputSet:false, inputAddrValid:true, inputDataValid:true }
+            ]
+        }
+    },
     created() { this.nes = null },
     mounted(){ this.updateRamView() /* Fill with 0 */ },
     destroyed(){  },
@@ -46,20 +56,29 @@ export default {
         stepCall(){
             if(this.nes == null) return
             if(this.autoUpdateRamView) this.updateRamView()
-            if((this.inputAddrValid && this.inputDataValid) && (this.inputSet || this.inputLock)){
-                var addr = parseInt("0x" + this.inputAddr)
-                var data = parseInt("0x" + this.inputData)
-                this.nes.cpubus.ram[addr] = data
-                if(this.inputSet)this.inputSet = false
+            for(var row in this.modify){
+                if((this.modify[row].inputAddrValid && this.modify[row].inputDataValid) && (this.modify[row].inputSet || this.modify[row].inputLock)){
+                    
+                    var addr = parseInt("0x" + this.modify[row].inputAddr)
+                    var data = parseInt("0x" + this.modify[row].inputData)
+                    this.nes.cpubus.ram[addr] = data
+                    if(this.modify[row].inputSet) this.modify[row].inputSet = false
+                }
             }
         },
-        addrValidChk(){ 
-            var a = parseInt("0x" + this.inputAddr)
-            this.inputAddrValid = (a>=0x0000 && a<=0x07FF)
+        addrValidChk(r){
+            var a = parseInt(this.modify[r].inputAddr)
+            this.modify[r].inputAddrValid = (a>=0x0000 && a<=0x07FF)
+            this.modify[r].inputLock = false
         },
-        dataValidChk(){ 
-            var a = parseInt("0x" + this.inputData)
-            this.inputDataValid = (a>=0x00 && a<=0xFF)
+        dataValidChk(r){
+            var a = parseInt("0x" + this.modify[r].inputData)
+            this.modify[r].inputDataValid = (a>=0x00 && a<=0xFF)
+            this.modify[r].inputLock = false
+        },
+        onLock(r){
+            if(this.modify[r].inputLock) this.modify[r].inputLock = false
+            else this.modify[r].inputLock = this.modify[r].inputDataValid && this.modify[r].inputAddrValid
         }
      },
     computed: {  },
@@ -76,10 +95,11 @@ export default {
     .wrapper{
         color: white;
         border: 1px dashed rgb(71, 71, 71);
+        background-color: rgb(100, 100, 100);
     }
     .table-wrapper{
         width: 100%;
-        height: 600px;
+        height: 500px;
         overflow-y: scroll;
     }
     .title{
@@ -114,24 +134,66 @@ export default {
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     }
+    .modify-row{
+        margin: -1px 0px;
+        border: 1px solid rgb(83, 83, 83);
+        padding: 5px 0px;
+    }
+    .delrow-button{
+        margin-top:-6px;
+        margin-right: -1px;
+        width:20px;
+        height:20px;
+        background-color: rgba(0, 0, 0, 0);
+        display: inline-block;
+        text-align: center;
+        color: white;
+        padding:0px;
+        padding-left:1px;
+        padding-bottom:2px;
+        border: 1px solid rgb(83, 83, 83);
+        font-family:sans-serif;
+        font-size: 10px;
+        -webkit-transition-duration: 0.2s;
+        transition-duration: 0.2s;
+    }
+    .delrow-button:hover{
+        background-color: rgb(29, 29, 29);
+    }
+    .addrow-button{
+        width:100%;
+        background-color: rgb(44, 44, 44);
+        display: inline-block;
+        text-align: center;
+        color: white;
+        padding:5px 10px;
+        border: 1px solid rgb(83, 83, 83);
+        font-family:sans-serif;
+        font-size: 10px;
+        font-weight: 100;
+        -webkit-transition-duration: 0.4s;
+        transition-duration: 0.4s;
+    }
+    .addrow-button:hover{
+        background-color: rgb(29, 29, 29);
+    }
     .button{
-        margin: 0px 5px;
         background-color: rgb(255, 0, 0);
         display: inline-block;
         text-align: center;
         color: white;
         padding:5px 10px;
-        border: 2px solid white;
+        border: 1px solid white;
         font-family:sans-serif;
         font-size: 10px;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }
     .button.disabled{
-        background-color: rgb(15, 15, 15);
+        background-color: rgb(24, 24, 24);
     }
     .button:hover{
-        box-shadow: 0 0 0px 2px white;
+        box-shadow: 0 0 0px 1px rgba(255, 255, 255, 0.26);
         background-color: rgb(128, 0, 0);
     }
     .input-wrapper{
@@ -143,8 +205,14 @@ export default {
         color: white; 
         background-color:black;
         margin: 0px 5px;
+        padding:5px 10px;
+        font-size: 10px;
+        font-family:sans-serif;
+        background-color: rgb(24, 24, 24);
+        border: 1px solid white;
     }
     input.invalid{
+        background-color:rgb(34, 34, 34);
         color: rgb(95, 95, 95);
     }
 </style>

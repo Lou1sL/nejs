@@ -458,7 +458,7 @@ class PPU {
         if(!this.mask.isRendering()) return
         this.v.setNameTbY(this.t.getNameTbY())
         this.v.setCoarseY(this.t.getCoarseY())
-        this.v.setFineY(this.t.getFineY())
+        this.v.setFineY  (this.t.getFineY()  )
     }
     reloadBgShifter(){
         this.render.bg_s_ptn_l = (this.render.bg_s_ptn_l & 0xFF00) | (this.render.bg_l & 0x00FF)
@@ -513,11 +513,27 @@ class PPU {
         }
     }
     visibleScanline(cycle){
-        if((cycle>=  1) && (cycle<=256)) { this.fetch((cycle -   1) % 0x08)             }
-        if((cycle>=321) && (cycle<=336)) { this.fetch((cycle - 321) % 0x08)             }
-        if( cycle == 256               ) { this.incScrollY()                            }
-        if( cycle == 257               ) { this.reloadBgShifter(); this.transferAddrX() }
-        if( cycle==338  ||  cycle==340 ) { this.fetchNT(this.fetchBuffer)               }
+        //if((cycle>=  1) && (cycle<=256)) { this.fetch((cycle -   1) % 0x08)             }
+        //if((cycle>=321) && (cycle<=336)) { this.fetch((cycle - 321) % 0x08)             }
+        // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+        // https://wiki.nesdev.com/w/index.php/PPU_rendering Visible scanlines Cycles 1-256 Note:
+        // -Sprite zero hits act as if the image starts at cycle 2 (which is the same cycle that the shifters shift for the first time),
+        // -so the sprite zero flag will be raised at this point at the earliest.
+        // -Actual pixel output is delayed further due to internal render pipelining, and the first pixel is output during cycle 4. 
+        // -The shifters are reloaded during ticks 9, 17, 25, ..., 257.
+        // -At the beginning of each scanline, the data for the first two tiles is already loaded into the shift registers (and ready to be rendered),
+        // -so the first tile that gets fetched is Tile 3. 
+        if( cycle==  1                 ) { this.fetchBuffer = this.fetchNTAddr()        }
+        if((cycle>=  2) && (cycle<=256)) { this.fetch((cycle -   1) % 0x08)             }
+
+        if( cycle==256                 ) { this.incScrollY()                            }
+        if( cycle==257                 ) { this.reloadBgShifter(); this.transferAddrX() }
+
+        if( cycle==321                 ) { this.fetchBuffer = this.fetchNTAddr()        }
+        if((cycle>=322) && (cycle<=337)) { this.fetch((cycle - 321) % 0x08)             }
+        if( cycle==338                 ) { this.fetchNT(this.fetchBuffer)               }
+        if( cycle==339                 ) { this.fetchBuffer = this.fetchNTAddr()        }
+        if( cycle==340                 ) { this.fetchNT(this.fetchBuffer)               }
     }
     postRenderScanline(cycle){
         /** do nothing */

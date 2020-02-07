@@ -41,12 +41,12 @@
     </div>
 
     <div class="input-wrapper">
-        
+        <!--
         <input v-model="inputAddr" placeholder="addr" @input="addrValidChk" :class="inputAddrValid?'':'invalid'">
         <input v-model="inputData" placeholder="data" @input="dataValidChk" :class="inputDataValid?'':'invalid'">
         <button v-on:click="inputSet=!inputSet" class="button disabled" style="margin:0px 2px;">SET</button>
         <button v-on:click="inputLock=!inputLock" :class="'button' + (inputLock?'':' disabled')" style="margin:0px 2px;">LOCK</button>
-
+        -->
         <button v-on:click="autoUpdateRamView=!autoUpdateRamView" :class="'button' + (autoUpdateRamView?'':' disabled')" style="float:right;">UPDATE</button>
     </div>
 </div>
@@ -89,7 +89,7 @@ export default {
                 this.$set(this.vRam1Buffer, r, row1)
             }
 
-            var oam  = this.nes != null ? this.nes.ppu.oam.getArr() : new Uint8Array(0x100)
+            var oam  = this.nes != null ? this.nes.ppu.priOam.getArr() : new Uint8Array(0x100)
             for(var r=0;r<0x10;r++){
                 this.oamBuffer[r] = []
                 var row = []
