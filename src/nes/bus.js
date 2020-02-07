@@ -165,7 +165,7 @@ class DMATransfer {
                 if(this.isEvenClk()){
                     this.data = this.bus.r((this.page << 8) | this.addr)
                 }else{
-                    this.bus.ppu.oam.setEle(this.addr,this.data)
+                    this.bus.ppu.priOam.setEle(this.addr,this.data)
                     this.addr++
                     if(this.addr>0xFF){
                         this.addr = 0x00

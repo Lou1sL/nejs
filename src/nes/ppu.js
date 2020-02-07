@@ -52,15 +52,17 @@ const SPRITE_ATTR_PRIOR = 0b00100000
 const SPRITE_ATTR_UNIMP = 0b00011100
 const SPRITE_ATTR_PALET = 0b00000011
 
-const OAM_SPRITE_COUNT = 64
-const OAM_DATA_SIZE    = OAM_SPRITE_COUNT * SPRITE_DATA_SIZE
-const SPRITE_SCANLINE_MAX = 8
+const PRI_OAM_SPRITE_COUNT = 64
+const SEC_OAM_SPRITE_COUNT = 8
+const PRI_OAM_DATA_SIZE    = PRI_OAM_SPRITE_COUNT * SPRITE_DATA_SIZE
+const SEC_OAM_DATA_SIZE    = SEC_OAM_SPRITE_COUNT * SPRITE_DATA_SIZE
 
 //https://wiki.nesdev.com/w/index.php/PPU_scrolling#PPU_internal_registers
 const ADDR_BITS = 0b0111111111111111
 const ADDR_y    = 0b0111000000000000 // fine Y scroll
 const ADDR_NY   = 0b0000100000000000 // nametable Y select
 const ADDR_NX   = 0b0000010000000000 // nametable X select
+const ADDR_N    = ADDR_NY | ADDR_NX  // nametable both X and Y
 const ADDR_Y    = 0b0000001111100000 // coarse Y scroll
 const ADDR_X    = 0b0000000000011111 // coarse X scroll
 
@@ -100,8 +102,8 @@ class Sprite {
 }
 
 class OAM {
-    constructor()      { this.value = new Uint8Array(OAM_DATA_SIZE); this.addr = 0 }
-    reset      ()      { this.value = new Uint8Array(OAM_DATA_SIZE); this.addr = 0 }
+    constructor(count) { this.value = new Uint8Array(count*SPRITE_DATA_SIZE);    this.addr = 0 }
+    reset      ()      { for(var i=0; i<this.value.length; i++) this.value[i]=0; this.addr = 0 }
     
     addrInc    ()      { this.addr = (this.addr + 1) & BIT_8             }
 
@@ -139,6 +141,7 @@ class Addr {
 
     getCoarseX ()    { return (this.value & ADDR_X)  >>>  0 }
     getCoarseY ()    { return (this.value & ADDR_Y)  >>>  5 }
+    getNameTb  ()    { return (this.value & ADDR_N)  >>> 10 }
     getNameTbX ()    { return (this.value & ADDR_NX) >>> 10 }
     getNameTbY ()    { return (this.value & ADDR_NY) >>> 11 }
     getFineY   ()    { return (this.value & ADDR_y)  >>> 12 }
@@ -148,6 +151,10 @@ class Addr {
     setNameTbX (val) { this.value &= ~ADDR_NX; this.value |= ((val & BIT_1) << 10) }
     setNameTbY (val) { this.value &= ~ADDR_NY; this.value |= ((val & BIT_1) << 11) }
     setFineY   (val) { this.value &= ~ADDR_y;  this.value |= ((val & BIT_3) << 12) }
+
+    incCoarseX ()    { this.setCoarseX(this.getCoarseX() + 1) }
+    incCoarseY ()    { this.setCoarseY(this.getCoarseY() + 1) }
+    incFineY   ()    { this.setFineY(this.getFineY() + 1)     }
 }
 class FineX {
     constructor()    { this.value = 0           }
@@ -200,6 +207,8 @@ class Mask {
 
     setRenderBg()    { this.value |=  MASK_b }
     clrRenderBg()    { this.value &= ~MASK_b } 
+
+    isRendering()    { return this.isRenderBg() || this.isRenderSp() }
 }
 class Stat {
     constructor()    { this.value = 0                }
@@ -274,12 +283,12 @@ class RenderInfo {
         this.bg_s_atr_l = 0
         this.bg_s_atr_h = 0
         //Sprite
-        this.spriteScanline = new Array(SPRITE_SCANLINE_MAX)
-        for(var i=0;i<SPRITE_SCANLINE_MAX;i++)
+        this.spriteScanline = new Array(SEC_OAM_SPRITE_COUNT)
+        for(var i=0;i<SEC_OAM_SPRITE_COUNT;i++)
             this.spriteScanline[i] = new Sprite()
         this.spriteCount = 0
-        this.sp_s_ptn_l = new Uint8Array(SPRITE_SCANLINE_MAX)
-        this.sp_s_ptn_h = new Uint8Array(SPRITE_SCANLINE_MAX)
+        this.sp_s_ptn_l = new Uint8Array(SEC_OAM_SPRITE_COUNT)
+        this.sp_s_ptn_h = new Uint8Array(SEC_OAM_SPRITE_COUNT)
 
         this.spriteZeroHitPossible   = false
 	    this.spriteZeroBeingRendered = false
@@ -297,7 +306,7 @@ class RenderInfo {
     }
 
     resetSpriteScanline(){
-        for(var i=0;i<SPRITE_SCANLINE_MAX;i++){
+        for(var i=0;i<SEC_OAM_SPRITE_COUNT;i++){
             this.spriteScanline[i].reset()
             this.sp_s_ptn_l[i] = 0
             this.sp_s_ptn_h[i] = 0
@@ -308,15 +317,20 @@ class RenderInfo {
 }
 
 class PPU {
+    //https://wiki.nesdev.com/w/index.php/PPU_rendering
     constructor(bus,screen){
-        //Internal RAM
-        this.oam  = new OAM() //For sprite data(64*4(x,y,color,tile))
+        //Sprite
+        this.priOam = new OAM(PRI_OAM_SPRITE_COUNT)   //64 sprites for the frame (64*4(x,y,color,tile))
+        this.secOam = new OAM(SEC_OAM_SPRITE_COUNT)   // 8 sprites for the current scanline
 
-        //Register
+        //Background
+        //https://wiki.nesdev.com/w/index.php/PPU_scrolling
         this.v    = new Addr()    //15 bits  Current VRAM address
-        this.t    = new Addr()    //15 bits  Temporary VRAM address (15 bits); can also be thought of as the address of the top left onscreen tile.
+        this.t    = new Addr()    //15 bits  Temporary VRAM address; can also be thought of as the address of the top left onscreen tile.
         this.x    = new FineX()   //3  bits  Fine X scroll
-        this.w    = new WLatch()  //1  bit   First or second write toggle (1 bit)
+        this.w    = new WLatch()  //1  bit   First or second write toggle
+
+        //IO
         this.ctrl = new Ctrl()    //0x2000
         this.mask = new Mask()    //0x2001
         this.stat = new Stat()    //0x2002
@@ -336,7 +350,8 @@ class PPU {
     incAddr () { this.v.set(this.v.get() + this.ctrl.getAddrInc()) }
 
     RST (){
-        this.oam.reset()
+        this.priOam.reset()
+        this.secOam.reset()
         this.v.reset()
         this.t.reset()
         this.x.reset()
@@ -360,7 +375,7 @@ class PPU {
         return res
      }
     //0x2004 OAMDATA
-    REG_OAMD_R (){ return this.oam.getCurrent() }
+    REG_OAMD_R (){ return this.priOam.getCurrent() }
     //0x2007 PPUDATA
     REG_DATA_R (){
         //Nametable -> delay, palette -> no delay.
@@ -383,11 +398,11 @@ class PPU {
     //0x2001 PPUMASK
     REG_MASK_W (val){ this.mask.set(val) }
     //0x2003 OAMAADDR
-    REG_OAMA_W (val){ this.oam.setAddr(val) }
+    REG_OAMA_W (val){ this.priOam.setAddr(val) }
     //0x2004 OAMDATA
     REG_OAMD_W (val){
-        this.oam.setCurrent(val)
-        this.oam.addrInc()
+        this.priOam.setCurrent(val)
+        this.priOam.addrInc()
     }
     //0x2005 PPUSCROLL (x2)
     REG_SCRL_W (val){
@@ -416,34 +431,31 @@ class PPU {
         this.incAddr()
     }
 
+    
     incScrollX(){
-        if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
-        var cx = this.v.getCoarseX()
-        if(cx == 0x1F){
+        if(!this.mask.isRendering()) return
+        if(this.v.getCoarseX() == 0x1F){
             this.v.setCoarseX(0)
             this.v.setNameTbX(~this.v.getNameTbX())
-        }else this.v.setCoarseX(cx + 1)
+        }else this.v.incCoarseX()
     }
     incScrollY(){
-        if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
-        var fy = this.v.getFineY()
-            if(fy >= 7){
-                this.v.setFineY(0)
-                var cy = this.v.getCoarseY()
-                if(cy == 29){
-                    this.v.setCoarseY(0)
-                    this.v.setNameTbY(~this.v.getNameTbY())
-                }else if (cy == 31)this.v.setCoarseY(0)
-                else this.v.setCoarseY(this.v.getCoarseY()+1)
-            }else this.v.setFineY(fy+1)
+        if(!this.mask.isRendering()) return
+        if(this.v.getFineY() < 7) this.v.incFineY()
+        else{
+            this.v.setFineY(0)
+                 if(this.v.getCoarseY() == 29) { this.v.setCoarseY(0); this.v.setNameTbY(~this.v.getNameTbY()) }
+            else if(this.v.getCoarseY() == 31) { this.v.setCoarseY(0)                                          }
+            else                               { this.v.incCoarseY()                                           }
+        }
     }
     transferAddrX(){
-        if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
+        if(!this.mask.isRendering()) return
         this.v.setNameTbX(this.t.getNameTbX())
         this.v.setCoarseX(this.t.getCoarseX())
     }
     transferAddrY(){
-        if((!this.mask.isRenderBg()) && (!this.mask.isRenderSp())) return
+        if(!this.mask.isRendering()) return
         this.v.setNameTbY(this.t.getNameTbY())
         this.v.setCoarseY(this.t.getCoarseY())
         this.v.setFineY(this.t.getFineY())
@@ -480,29 +492,24 @@ class PPU {
 
     //https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     //Background
-    fetchNT(){
-        this.render.bg_nt = this.busRAddr(0x2000 | (this.v.get() & 0x0FFF))
-    }
-    fetchAT(){
-        var attr = this.busRAddr(0x23C0 | (this.v.getNameTbY() << 11) | (this.v.getNameTbX() << 10) | ((this.v.getCoarseY() >>> 2) << 3) | (this.v.getCoarseX() >>> 2))
-        attr >>>= ((this.v.getCoarseY() & 0x02) != 0) ? 4 : 0
-        attr >>>= ((this.v.getCoarseX() & 0x02) != 0) ? 2 : 0
-        this.render.bg_at = attr & 0x03
-    }
-    fetchBGL(){
-        this.render.bg_l = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) + (this.render.bg_nt << 4) + this.v.getFineY() + 0)
-    }
-    fetchBGH(){
-        this.render.bg_h = this.busRAddr(((this.ctrl.isBgSel()?1:0) << 12) + (this.render.bg_nt << 4) + this.v.getFineY() + 8)
-    }
+    fetchNTAddr () { return 0x2000 | (this.v.get() & 0x0FFF) }
+    fetchNT (addr) { this.render.bg_nt = this.busRAddr(addr) }
+    fetchATAddr () { return 0x23C0 | (this.v.getNameTb() << 10) | ((this.v.getCoarseY() >>> 2) << 3) | (this.v.getCoarseX() >>> 2) }
+    fetchAT (addr) { this.render.bg_at = (this.busRAddr(addr) >>> (((this.v.getCoarseY() & 0x02) != 0) ? 4 : 0)) >>> (((this.v.getCoarseX() & 0x02) != 0) ? 2 : 0) }
+    fetchBGAddr () { return ((this.ctrl.isBgSel()?1:0) << 12) + (this.render.bg_nt << 4) + this.v.getFineY() }
+    fetchBGL(addr) { this.render.bg_l = this.busRAddr(addr) }
+    fetchBGH(addr) { this.render.bg_h = this.busRAddr(addr) }
     fetch(step){
         this.updateShifter()
         switch(step){
-            case 0 : this.reloadBgShifter(); this.fetchNT(); break
-            case 2 : this.fetchAT();                         break
-            case 4 : this.fetchBGL();                        break
-            case 6 : this.fetchBGH();                        break
-            case 7 : this.incScrollX();                      break
+            case 0 : this.fetchBuffer = this.fetchNTAddr(); this.reloadBgShifter(); break
+            case 1 : this.fetchNT(this.fetchBuffer);                                break
+            case 2 : this.fetchBuffer = this.fetchATAddr();                         break
+            case 3 : this.fetchAT(this.fetchBuffer);                                break
+            case 4 : this.fetchBuffer = this.fetchBGAddr();                         break
+            case 5 : this.fetchBGL(this.fetchBuffer);                               break
+            case 6 : this.fetchBuffer = (this.fetchBuffer + 8) & BIT_16;            break
+            case 7 : this.fetchBGH(this.fetchBuffer); this.incScrollX();            break
         }
     }
     visibleScanline(cycle){
@@ -510,7 +517,7 @@ class PPU {
         if((cycle>=321) && (cycle<=336)) { this.fetch((cycle - 321) % 0x08)             }
         if( cycle == 256               ) { this.incScrollY()                            }
         if( cycle == 257               ) { this.reloadBgShifter(); this.transferAddrX() }
-        if( cycle==337  ||  cycle==339 ) { this.fetchNT()                               }
+        if( cycle==338  ||  cycle==340 ) { this.fetchNT(this.fetchBuffer)               }
     }
     postRenderScanline(cycle){
         /** do nothing */
@@ -571,17 +578,17 @@ class PPU {
         var cycle = this.pixelIter.getCycle()
         if(cycle == 257){
             this.render.resetSpriteScanline()
-            for(var entry = 0; (entry < 64) && (this.render.spriteCount <= SPRITE_SCANLINE_MAX); entry++){
-                var diff = (this.pixelIter.getScanline() - this.oam.getY(entry))// & 0xFFFF
+            for(var entry = 0; (entry < 64) && (this.render.spriteCount <= SEC_OAM_SPRITE_COUNT); entry++){
+                var diff = (this.pixelIter.getScanline() - this.priOam.getY(entry))// & 0xFFFF
                 if(diff >= 0 && diff < (this.ctrl.getSpriteH())){
-                    if(this.render.spriteCount < SPRITE_SCANLINE_MAX){
+                    if(this.render.spriteCount < SEC_OAM_SPRITE_COUNT){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
-                        this.render.spriteScanline[this.render.spriteCount].setArr(this.oam.getSprite(entry))
+                        this.render.spriteScanline[this.render.spriteCount].setArr(this.priOam.getSprite(entry))
                         this.render.spriteCount++
                     }
                 }
             }
-            if(this.render.spriteCount > SPRITE_SCANLINE_MAX) this.stat.setOv()
+            if(this.render.spriteCount > SEC_OAM_SPRITE_COUNT) this.stat.setOv()
             else this.stat.clrOv()
         }
     }
