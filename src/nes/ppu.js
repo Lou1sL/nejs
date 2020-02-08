@@ -81,7 +81,9 @@ class OAM {
     setCurrent (val)   { this.value[this.addr] = val & BIT_8             }
     getArr     ()      { return this.value                               }
     setArr     (val)   { this.value = val                                }
-    getSprite  (i)     { return this.value.slice(SPRITE_DATA_SIZE*i,SPRITE_DATA_SIZE*(i+1)) }
+    getSprite  (i)     { 
+        return this.value.slice(SPRITE_DATA_SIZE*i,SPRITE_DATA_SIZE*i+SPRITE_DATA_SIZE)
+    }
     setSprite  (i,val) { 
         for(var a=0;a<SPRITE_DATA_SIZE;a++) this.value[SPRITE_DATA_SIZE*i+a] = val[a]
     }
@@ -199,11 +201,8 @@ class Stat {
     clrAll     ()    { this.clrVBlank(); this.clrHit(); this.clrOv() }
 }
 
-const SCANLINE_STATE_PRERENDER   = 0
-const SCANLINE_STATE_VISIBLE     = 1
-const SCANLINE_STATE_POSTRENDER  = 2
-const SCANLINE_STATE_VBLANK      = 3
-const SCANLINE_STATE_NOP         = 4
+const SCANLINE_STATE = { PRERENDER:0, VISIBLE:1, POSTRENDER:2, VBLANK:3, NOP:-1 }
+const    CYCLE_STATE = { IDLE:0, FETCH_TILE:1, SPRITE_EVAL:2, PREFETCH:3, TBFETCH:4  }
 //https://wiki.nesdev.com/w/index.php/PPU_rendering#Cycle_0
 class RenderIterator {
     constructor()    { this.frame = 0; this.scanline = 0; this.cycle = 0 }
@@ -215,12 +214,19 @@ class RenderIterator {
 
     isOddFrame ()    { return (this.frame & 1) == 1 }
 
-    getScanlineState()  {
-             if(this.scanline <  240) return SCANLINE_STATE_VISIBLE
-        else if(this.scanline == 240) return SCANLINE_STATE_POSTRENDER
-        else if(this.scanline == 241) return SCANLINE_STATE_VBLANK
-        else if(this.scanline == 261) return SCANLINE_STATE_PRERENDER
-        else return SCANLINE_STATE_NOP
+    getState()  {
+        var state = { scanline:SCANLINE_STATE.NOP, cycle:CYCLE_STATE.IDLE }
+             if(this.scanline <  240) state.scanline = SCANLINE_STATE.VISIBLE
+        else if(this.scanline == 240) state.scanline = SCANLINE_STATE.POSTRENDER
+        else if(this.scanline == 241) state.scanline = SCANLINE_STATE.VBLANK
+        else if(this.scanline == 261) state.scanline = SCANLINE_STATE.PRERENDER
+
+             if(this.cycle ==   0) state.cycle = CYCLE_STATE.IDLE
+        else if(this.cycle <= 256) state.cycle = CYCLE_STATE.FETCH_TILE
+        else if(this.cycle <= 320) state.cycle = CYCLE_STATE.SPRITE_EVAL
+        else if(this.cycle <= 336) state.cycle = CYCLE_STATE.PREFETCH
+        else if(this.cycle <= 340) state.cycle = CYCLE_STATE.TBFETCH
+        return state
     }
 
     //https://wiki.nesdev.com/w/index.php/PPU_frame_timing
@@ -577,16 +583,15 @@ class PPU {
     }
     
 
-    clock(){
-        var scanlineState = this.pixelIter.getScanlineState()
+    clock(dbg=false){
+        var state = this.pixelIter.getState()
         var cycle = this.pixelIter.getCycle()
-        var scanline = this.pixelIter.getScanline()
 
-        switch(scanlineState){
-            case SCANLINE_STATE_PRERENDER: this.prerenderScanline(cycle); break
-            case SCANLINE_STATE_VISIBLE: this.visibleScanline(cycle); this.scanlineRender(); this.scanlineVisible(); break
-            case SCANLINE_STATE_POSTRENDER: this.postRenderScanline(cycle); break
-            case SCANLINE_STATE_VBLANK: this.vBlankScanline(cycle); break
+        switch(state.scanline){
+            case SCANLINE_STATE.PRERENDER: this.prerenderScanline(cycle); break
+            case SCANLINE_STATE.VISIBLE: this.visibleScanline(cycle); this.scanlineRender(); this.scanlineVisible(); break
+            case SCANLINE_STATE.POSTRENDER: this.postRenderScanline(cycle); break
+            case SCANLINE_STATE.VBLANK: this.vBlankScanline(cycle); break
         }
         
         var bg_pixel = 0
@@ -625,6 +630,9 @@ class PPU {
         }
         
         //-----
+        var cycle = this.pixelIter.getCycle()
+        var scanline = this.pixelIter.getScanline()
+
         var pixel = 0
         var palet = 0
 
@@ -654,6 +662,8 @@ class PPU {
         this.screen.updatePixelPicker(cycle-1,scanline,this.busRAddr(0x3F00+(palet<<2)+pixel) & BIT_6)
 
         this.pixelIter.iterate(this.mask.isRenderBg() || this.mask.isRenderSp())
+
+        return { frame:this.pixelIter.getFrame(), scanline:this.pixelIter.getScanline(), cycle:this.pixelIter.getCycle() }
     }
 }
 
