@@ -157,14 +157,14 @@ class CPU{
     //V if the sign of both inputs is different from the sign of the result. (Anding with 0x80 extracts just the sign bit from the result.) 
     srV(oprand,oldacc,result){ this.sr = (((oldacc ^ result) & (oprand ^ result) & 0x80) != 0 ? this.sr | V : this.sr & ~V) }
     //Page bound crossing detection
-    isXBound(o,n) { return ((o ^ n) & 0xFF00) != 0 }
+    isXPage(o,n) { return ((o ^ n) & 0xFF00) != 0 }
 
     toSigned(val) { return val < 0x80 ? val : val - 0x0100 }
     branch(addr)  { 
         var oldpc = this.getPC()
         var newpc = (oldpc + this.toSigned(this.busR(addr))) & 0xFFFF
         this.pc(newpc)
-        return this.isXBound(oldpc,newpc) ? 2 : 1
+        return this.isXPage(oldpc,newpc) ? 2 : 1
     }
 
     /**
@@ -191,11 +191,11 @@ class CPU{
     addrZPX()    { var result = (this.addrZP().addr + this.x) & 0xFF; return { addr:result, cycle:0 } }
     addrZPY()    { var result = (this.addrZP().addr + this.y) & 0xFF; return { addr:result, cycle:0 } }
     addrABS()    { var result = this.busR16(this.getPC());       return { addr:result, cycle:0 } }
-    addrABSX()   { var from = this.addrABS().addr; var result = (from + this.x) & 0xFFFF; return { addr:result, cycle:this.isXBound(from,result)?1:0 } }
-    addrABSY()   { var from = this.addrABS().addr; var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXBound(from,result)?1:0 } }
+    addrABSX()   { var from = this.addrABS().addr; var result = (from + this.x) & 0xFFFF; return { addr:result, cycle:this.isXPage(from,result)?1:0 } }
+    addrABSY()   { var from = this.addrABS().addr; var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXPage(from,result)?1:0 } }
     addrINDIR()  { var result = this.busR16(this.addrABS().addr);     return { addr:result, cycle:0 } }
     addrXINDIR() { var result = this.busR16(this.addrZPX().addr);     return { addr:result, cycle:0 } }
-    addrINDIRY() { var from = this.busR16(this.addrZP().addr); var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXBound(from,result)?1:0 } }
+    addrINDIRY() { var from = this.busR16(this.addrZP().addr); var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXPage(from,result)?1:0 } }
 
     //Get opcode data then count PC
     fetchOpcode() {
