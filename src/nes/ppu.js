@@ -81,8 +81,11 @@ class OAM {
     setCurrent (val)   { this.value[this.addr] = val & BIT_8             }
     getArr     ()      { return this.value                               }
     setArr     (val)   { this.value = val                                }
-    trsSprite  (i,src) { 
-        for(var a=SPRITE_DATA_SIZE*i;a<SPRITE_DATA_SIZE*i+SPRITE_DATA_SIZE;a++) this.value[a] = src.value[a]
+    getSprite  (i)     { 
+        return this.value.slice(SPRITE_DATA_SIZE*i,SPRITE_DATA_SIZE*i+SPRITE_DATA_SIZE)
+    }
+    setSprite  (i,val) { 
+        for(var a=0;a<SPRITE_DATA_SIZE;a++) this.value[SPRITE_DATA_SIZE*i+a] = val[a]
     }
 
     //Sprite
@@ -448,7 +451,7 @@ class PPU {
             if(cycle>0 && cycle<258){
                 for(var i=0;i<this.render.spriteCount;i++){
                     var x = this.secOam.getX(i)
-                    if (x > 0)this.secOam.setX(x-1)
+                    if (x > 0)this.secOam.setX(i,x-1)
                     else
                     {
                         this.render.sp_s_ptn_l[i] = (this.render.sp_s_ptn_l[i] << 1) & BIT_8
@@ -569,7 +572,7 @@ class PPU {
                 if(diff >= 0 && diff < (this.ctrl.getSpriteH())){
                     if(this.render.spriteCount < SEC_OAM_SPRITE_COUNT){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
-                        this.secOam.trsSprite(this.render.spriteCount,this.priOam)
+                        this.secOam.setSprite(this.render.spriteCount,this.priOam.getSprite(entry))
                         this.render.spriteCount++
                     }
                 }
