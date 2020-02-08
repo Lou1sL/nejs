@@ -67,40 +67,6 @@ const ADDR_Y    = 0b0000001111100000 // coarse Y scroll
 const ADDR_X    = 0b0000000000011111 // coarse X scroll
 
 
-class Tile {
-    constructor(val) { this.value = val                     }
-    getNumber  ()    { return this.value & SPRITE_TILE_NUMB }
-    getBank    ()    { return this.value & SPRITE_TILE_BANK }
-}
-class Attribute {
-    constructor(val) { this.value = val                             }
-    isVFlip    ()    { return (this.value & SPRITE_ATTR_VFLIP) != 0 }
-    isHFlip    ()    { return (this.value & SPRITE_ATTR_HFLIP) != 0 }
-    isPrior    ()    { return (this.value & SPRITE_ATTR_PRIOR) == 0 }
-    getPalet   ()    { return this.value & SPRITE_ATTR_PALET        }
-}
-
-class Sprite {
-    constructor()    { this.value = new Uint8Array(SPRITE_DATA_SIZE) }
-    setArr     (val) { this.value = val                              }
-    getArr     ()    { return this.value                             }
-
-    getY       ()    { return this.value[SPRITE_DATA_Y] }
-    getTile    ()    { return this.value[SPRITE_DATA_T] }
-    getAttr    ()    { return this.value[SPRITE_DATA_A] }
-    getX       ()    { return this.value[SPRITE_DATA_X] }
-
-    setY       (val) { this.value[SPRITE_DATA_Y] = val & BIT_8 }
-    setTile    (val) { this.value[SPRITE_DATA_T] = val & BIT_8 }
-    setAttr    (val) { this.value[SPRITE_DATA_A] = val & BIT_8 }
-    setX       (val) { this.value[SPRITE_DATA_X] = val & BIT_8 }
-
-    getAttrObj ()    { return new Attribute(this.getAttr())    }
-    getTileObj ()    { return new Tile(this.getTile())         }
-
-    reset      ()    { for(var i=0;i<SPRITE_DATA_SIZE;i++)this.value[i] = 0 }
-}
-
 class OAM {
     constructor(count) { this.value = new Uint8Array(count*SPRITE_DATA_SIZE);    this.addr = 0 }
     reset      ()      { for(var i=0; i<this.value.length; i++) this.value[i]=0; this.addr = 0 }
@@ -115,11 +81,8 @@ class OAM {
     setCurrent (val)   { this.value[this.addr] = val & BIT_8             }
     getArr     ()      { return this.value                               }
     setArr     (val)   { this.value = val                                }
-    getSprite  (i)     { 
-        return this.value.slice(SPRITE_DATA_SIZE*i,SPRITE_DATA_SIZE*i+SPRITE_DATA_SIZE)
-    }
-    setSprite  (i,val) { 
-        for(var a=0;a<SPRITE_DATA_SIZE;a++) this.value[SPRITE_DATA_SIZE*i+a] = val[a]
+    trsSprite  (i,src) { 
+        for(var a=SPRITE_DATA_SIZE*i;a<SPRITE_DATA_SIZE*i+SPRITE_DATA_SIZE;a++) this.value[a] = src.value[a]
     }
 
     //Sprite
@@ -132,6 +95,16 @@ class OAM {
     setTile    (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_T] = val & BIT_8 }
     setAttr    (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_A] = val & BIT_8 }
     setX       (i,val) { this.value[SPRITE_DATA_SIZE*i + SPRITE_DATA_X] = val & BIT_8 }
+
+    //Tile
+    getNumber  (i)     { return  this.getTile(i) & SPRITE_TILE_NUMB }
+    getBank    (i)     { return  this.getTile(i) & SPRITE_TILE_BANK }
+
+    //Attr
+    isVFlip    (i)     { return (this.getAttr(i) & SPRITE_ATTR_VFLIP) != 0 }
+    isHFlip    (i)     { return (this.getAttr(i) & SPRITE_ATTR_HFLIP) != 0 }
+    isPrior    (i)     { return (this.getAttr(i) & SPRITE_ATTR_PRIOR) == 0 }
+    getPalet   (i)     { return  this.getAttr(i) & SPRITE_ATTR_PALET       }
 }
 class Addr {
     constructor()    { this.value = 0               }
@@ -283,9 +256,6 @@ class RenderInfo {
         this.bg_s_atr_l = 0
         this.bg_s_atr_h = 0
         //Sprite
-        this.spriteScanline = new Array(SEC_OAM_SPRITE_COUNT)
-        for(var i=0;i<SEC_OAM_SPRITE_COUNT;i++)
-            this.spriteScanline[i] = new Sprite()
         this.spriteCount = 0
         this.sp_s_ptn_l = new Uint8Array(SEC_OAM_SPRITE_COUNT)
         this.sp_s_ptn_h = new Uint8Array(SEC_OAM_SPRITE_COUNT)
@@ -305,9 +275,8 @@ class RenderInfo {
         this.bg_s_atr_h = 0
     }
 
-    resetSpriteScanline(){
+    resetSprite(){
         for(var i=0;i<SEC_OAM_SPRITE_COUNT;i++){
-            this.spriteScanline[i].reset()
             this.sp_s_ptn_l[i] = 0
             this.sp_s_ptn_h[i] = 0
         }
@@ -478,8 +447,8 @@ class PPU {
             var cycle = this.pixelIter.getCycle()
             if(cycle>0 && cycle<258){
                 for(var i=0;i<this.render.spriteCount;i++){
-                    var x = this.render.spriteScanline[i].getX()
-                    if (x > 0)this.render.spriteScanline[i].setX(x-1)
+                    var x = this.secOam.getX(i)
+                    if (x > 0)this.secOam.setX(x-1)
                     else
                     {
                         this.render.sp_s_ptn_l[i] = (this.render.sp_s_ptn_l[i] << 1) & BIT_8
@@ -536,7 +505,7 @@ class PPU {
         if( cycle==340                 ) { this.fetchNT(this.fetchBuffer)               }
     }
     postRenderScanline(cycle){
-        /** do nothing */
+        //It should do nothing on hardware, anyway I put Canvas update here.
         if(cycle == 0                  ) this.screen.updateCanvas()
     }
     vBlankScanline(cycle){
@@ -560,18 +529,18 @@ class PPU {
                 var sp_ptn_addr_h = 0
 
                 var is8x16 = this.ctrl.is8x16()
-                var vf = (this.render.spriteScanline[i].getAttrObj().isVFlip())
+                var vf = this.secOam.isVFlip(i)
                 
-                var diff = (this.pixelIter.getScanline() - this.render.spriteScanline[i].getY())
+                var diff = (this.pixelIter.getScanline() - this.secOam.getY(i))
                 if(is8x16){
                     sp_ptn_addr_l = 
-                            (this.render.spriteScanline[i].getTileObj().getBank() << 12) |
-                            ((((this.render.spriteScanline[i].getTileObj().getNumber()) + (vf?(diff<8?1:0):(diff<8?0:1))) &0xFF) << 4) |
+                            (this.secOam.getBank(i) << 12) |
+                            ((((this.secOam.getNumber(i)) + (vf?(diff<8?1:0):(diff<8?0:1))) &0xFF) << 4) |
                             ((vf?(7 - diff & BIT_3):(diff & BIT_3)) & BIT_4)
                 }else{
                     sp_ptn_addr_l = 
                             ((this.ctrl.isSpSel()?1:0) << 12) |
-                            (this.render.spriteScanline[i].getTile() << 4) |
+                            (this.secOam.getTile(i) << 4) |
                             ((vf?(7 - diff):diff) & BIT_4)
                 }
 
@@ -580,7 +549,7 @@ class PPU {
                 sp_ptn_data_l = this.busRAddr(sp_ptn_addr_l)
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
 
-                if(this.render.spriteScanline[i].getAttrObj().isHFlip()){
+                if(this.secOam.isHFlip(i)){
                     sp_ptn_data_l = parseInt((sp_ptn_data_l & BIT_8).toString(2).padStart(8, '0').split("").reverse().join(""),2) & BIT_8
                     sp_ptn_data_h = parseInt((sp_ptn_data_h & BIT_8).toString(2).padStart(8, '0').split("").reverse().join(""),2) & BIT_8
                 }
@@ -593,13 +562,14 @@ class PPU {
     scanlineVisible(){
         var cycle = this.pixelIter.getCycle()
         if(cycle == 257){
-            this.render.resetSpriteScanline()
+            this.secOam.reset()
+            this.render.resetSprite()
             for(var entry = 0; (entry < 64) && (this.render.spriteCount <= SEC_OAM_SPRITE_COUNT); entry++){
                 var diff = (this.pixelIter.getScanline() - this.priOam.getY(entry))// & 0xFFFF
                 if(diff >= 0 && diff < (this.ctrl.getSpriteH())){
                     if(this.render.spriteCount < SEC_OAM_SPRITE_COUNT){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
-                        this.render.spriteScanline[this.render.spriteCount].setArr(this.priOam.getSprite(entry))
+                        this.secOam.trsSprite(this.render.spriteCount,this.priOam)
                         this.render.spriteCount++
                     }
                 }
@@ -640,14 +610,14 @@ class PPU {
         if(this.mask.isRenderSp()){
             this.render.spriteZeroBeingRendered = false
             for(var i=0;i<this.render.spriteCount;i++){
-                if(this.render.spriteScanline[i].getX()!=0) continue
+                if(this.secOam.getX(i)!=0) continue
                 
                 var pl = (this.render.sp_s_ptn_l[i] & 0x80) != 0 ? 1 : 0
                 var ph = (this.render.sp_s_ptn_h[i] & 0x80) != 0 ? 1 : 0
                 sp_pixel = (ph << 1) | pl
 
-                sp_palet = (this.render.spriteScanline[i].getAttrObj().getPalet() | 0b0100) & BIT_8
-                sp_prior = this.render.spriteScanline[i].getAttrObj().isPrior()
+                sp_palet = (this.secOam.getPalet(i) | 0b0100) & BIT_8
+                sp_prior = this.secOam.isPrior(i)
 
                 if(sp_pixel!=0){
                     if(i==0 && this.render.spriteZeroHitPossible)this.render.spriteZeroBeingRendered = true
