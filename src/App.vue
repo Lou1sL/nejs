@@ -114,6 +114,7 @@ export default {
             this.$refs.WorkRamViewer.stepCall()
             this.$refs.VRamViewer.stepCall()
             var diff = new Date().getTime() - previousT
+            //console.log(diff)
             this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
         },
         reset(){

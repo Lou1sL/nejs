@@ -372,11 +372,11 @@ class CPU{
 
         else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
 
-        return { pc:this.getPC(), mnem, addr, cycle }
+        return cycle
     }
 
     clock() {
-        if(this.cycleRemain <= 0) this.cycleRemain = this.step().cycle
+        if(this.cycleRemain <= 0) this.cycleRemain = this.step()
         this.cycleRemain--
     }
 
