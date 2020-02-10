@@ -45,7 +45,7 @@ class Screen {
         this.imgScr    = this.ctx.createImageData(this.canvas.width, this.canvas.height)
         this.data      = new Uint32Array(this.img.data.buffer)
         this.dataScr   = new Uint32Array(this.imgScr.data.buffer)
-        this.scaleMode = SCALE_MODE.EPX
+        this.scaleMode = SCALE_MODE.S2X
     }
     setScaleMode(mode){ this.scaleMode = mode }
     

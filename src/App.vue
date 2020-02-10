@@ -110,11 +110,13 @@ export default {
             reader.onerror = evt => { console.error(evt) }
         },
         step(){
-            var previousT = new Date().getTime()
+            var previousT = Date.now()
             this.nes.step()
+            clearTimeout(this.timer)
             this.$refs.WorkRamViewer.stepCall()
             this.$refs.VRamViewer.stepCall()
-            var diff = new Date().getTime() - previousT
+            var newT = Date.now()
+            var diff = newT - previousT
             //console.log(diff)
             this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
         },

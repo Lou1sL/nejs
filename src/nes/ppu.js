@@ -81,9 +81,8 @@ class OAM {
     setCurrent (val)   { this.value[this.addr] = val & BIT_8             }
     getArr     ()      { return this.value                               }
     setArr     (val)   { this.value = val                                }
-    getSprite  (i)     { return this.value.slice(SPRITE_DATA_SIZE*i,SPRITE_DATA_SIZE*(i+1)) }
-    setSprite  (i,val) { 
-        for(var a=0;a<SPRITE_DATA_SIZE;a++) this.value[SPRITE_DATA_SIZE*i+a] = val[a]
+    transferSpriteTo(i,to,toi){
+        for(var a=0;a<SPRITE_DATA_SIZE;a++) to.value[SPRITE_DATA_SIZE*toi+a] = this.value[SPRITE_DATA_SIZE*i+a]
     }
 
     //Sprite
@@ -547,14 +546,25 @@ class PPU {
                 sp_ptn_data_h = this.busRAddr(sp_ptn_addr_h)
 
                 if(this.secOam.isHFlip(i)){
-                    sp_ptn_data_l = parseInt((sp_ptn_data_l & BIT_8).toString(2).padStart(8, '0').split("").reverse().join(""),2) & BIT_8
-                    sp_ptn_data_h = parseInt((sp_ptn_data_h & BIT_8).toString(2).padStart(8, '0').split("").reverse().join(""),2) & BIT_8
+                    sp_ptn_data_l = this.bit8Reverse(sp_ptn_data_l)
+                    sp_ptn_data_h = this.bit8Reverse(sp_ptn_data_h)
                 }
 
                 this.render.sp_s_ptn_l[i] = sp_ptn_data_l
                 this.render.sp_s_ptn_h[i] = sp_ptn_data_h
             }
         }
+    }
+    bit8Reverse(data){
+        for(var a=0; a<4; a++) { 
+            var bitL = ((data >>> a) & 1) << (7-a)
+            var bitR = ((data >>> (7-a)) & 1) << a
+            data &= ~(1<<a)
+            data &= ~(1<<(7-a))
+            data |= bitL
+            data |= bitR
+        }
+        return data
     }
     scanlineVisible(){
         var cycle = this.pixelIter.getCycle()
@@ -566,7 +576,7 @@ class PPU {
                 if(diff >= 0 && diff < (this.ctrl.getSpriteH())){
                     if(this.render.spriteCount < SEC_OAM_SPRITE_COUNT){
                         if(entry == 0) this.render.spriteZeroHitPossible = true
-                        this.secOam.setSprite(this.render.spriteCount,this.priOam.getSprite(entry))
+                        this.priOam.transferSpriteTo(entry,this.secOam,this.render.spriteCount)
                         this.render.spriteCount++
                     }
                 }
