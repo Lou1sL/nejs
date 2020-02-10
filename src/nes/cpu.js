@@ -108,7 +108,7 @@ class CPU{
         this.sr  = ~(N|V|B|D|I|Z|C)
         this.bus = bus
 
-        this.cycleRemain = 0
+        this.cycleCounter = 0
     }
     //https://www.pagetable.com/?p=410
     interrupt(int,sr){
@@ -129,10 +129,10 @@ class CPU{
         else this.sr = ~(N|V|D|Z|C)
     }
     //All interrupts
-    RST() { this.interrupt(RST, this.sr & ~B); this.cycleRemain = 8 }
-    NMI() { this.interrupt(NMI, this.sr & ~B); this.cycleRemain = 8 }
-    IRQ() { this.interrupt(IRQ, this.sr & ~B); this.cycleRemain = 7 }
-    BRK() { this.interrupt(IRQ, this.sr |  B); this.cycleRemain = 7 }
+    RST() { this.interrupt(RST, this.sr & ~B); this.cycleCounter = 8 }
+    NMI() { this.interrupt(NMI, this.sr & ~B); this.cycleCounter = 8 }
+    IRQ() { this.interrupt(IRQ, this.sr & ~B); this.cycleCounter = 7 }
+    BRK() { this.interrupt(IRQ, this.sr |  B); this.cycleCounter = 7 }
     //PC in 16-bit
     getPC() { return this.pcl | (this.pch << 8)                   }
     pc(val) { this.pcl = val & 0xFF; this.pch = (val >> 8) & 0xFF }
@@ -160,53 +160,40 @@ class CPU{
     isXPage(o,n) { return ((o ^ n) & 0xFF00) != 0 }
 
     toSigned(val) { return val < 0x80 ? val : val - 0x0100 }
+
+    //Branch, adds X page cycle
     branch(addr)  { 
         var oldpc = this.getPC()
         var newpc = (oldpc + this.toSigned(this.busR(addr))) & 0xFFFF
         this.pc(newpc)
-        return this.isXPage(oldpc,newpc) ? 2 : 1
+        this.cycleCounter += this.isXPage(oldpc,newpc) ? 2 : 1
     }
 
-    /**
-     * Addressing Modes:
-     * (Actual address of target value)
-     * 
-     * accumulator        : N/A
-     * implied            : N/A
-     * immediate          : pc
-     * relative           : pc
-     * zeropage           : R(pc)
-     * absolute           : R16(pc)
-     * indirect           : R16(R16(pc)) !
-     * zeropage x-indexed : R(pc) + x
-     * absolute x-indexed : R16(pc) + x
-     * x-indexed indirect : R16((R(pc) + x) & 0xFF) !
-     * zeropage y-indexed : R(pc) + y
-     * absolute y-indexed : R16(pc) + y
-     * indirect y-indexed : R16(R(pc)) + y !
-     */
-    addrIMME()   { var result = this.getPC();                         return { addr:result, cycle:0 } }
-    addrRELA()   { var result = this.getPC();                         return { addr:result, cycle:0 } }
-    addrZP()     { var result = this.busR(this.getPC());              return { addr:result, cycle:0 } }
-    addrZPX()    { var result = (this.addrZP().addr + this.x) & 0xFF; return { addr:result, cycle:0 } }
-    addrZPY()    { var result = (this.addrZP().addr + this.y) & 0xFF; return { addr:result, cycle:0 } }
-    addrABS()    { var result = this.busR16(this.getPC());       return { addr:result, cycle:0 } }
-    addrABSX()   { var from = this.addrABS().addr; var result = (from + this.x) & 0xFFFF; return { addr:result, cycle:this.isXPage(from,result)?1:0 } }
-    addrABSY()   { var from = this.addrABS().addr; var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXPage(from,result)?1:0 } }
-    addrINDIR()  { var result = this.busR16(this.addrABS().addr);     return { addr:result, cycle:0 } }
-    addrXINDIR() { var result = this.busR16(this.addrZPX().addr);     return { addr:result, cycle:0 } }
-    addrINDIRY() { var from = this.busR16(this.addrZP().addr); var result = (from + this.y) & 0xFFFF; return { addr:result, cycle:this.isXPage(from,result)?1:0 } }
-
-    //Get opcode data then count PC
+    //Gets opcode data,counts PC,adds basic cycle
     fetchOpcode() {
         var b = this.busR(this.getPC())
-        if(OPCODE.hasOwnProperty(b)) { this.cc(1); return OPCODE[b] }
-        else return { mnem:'N/A', addressing:'N/A', cycle:0 }
+        this.cc(1)
+        if(OPCODE.hasOwnProperty(b)) { this.cycleCounter=OPCODE[b]['cycle']; return OPCODE[b] }
+        else { this.cycleCounter=0; return { mnem:'N/A', addressing:'N/A', cycle:0 } }
     }
+
+     //Addressing modes, adds X page cycle
+    addrIMME()   { var addr = this.getPC();                                                    return addr }
+    addrRELA()   { var addr = this.getPC();                                                    return addr }
+    addrZP()     { var addr = this.busR(this.getPC());                                         return addr }
+    addrZPX()    { var addr = (this.addrZP() + this.x) & 0xFF;                                 return addr }
+    addrZPY()    { var addr = (this.addrZP() + this.y) & 0xFF;                                 return addr }
+    addrABS()    { var addr = this.busR16(this.getPC());                                       return addr }
+    addrABSX()   { var from = this.addrABS(); var addr = (from + this.x) & 0xFFFF;             this.cycleCounter += this.isXPage(from,addr)?1:0; return addr }
+    addrABSY()   { var from = this.addrABS(); var addr = (from + this.y) & 0xFFFF;             this.cycleCounter += this.isXPage(from,addr)?1:0; return addr }
+    addrINDIR()  { var addr = this.busR16(this.addrABS());                                     return addr }
+    addrXINDIR() { var addr = this.busR16(this.addrZPX());                                     return addr }
+    addrINDIRY() { var from = this.busR16(this.addrZP()); var addr = (from + this.y) & 0xFFFF; this.cycleCounter += this.isXPage(from,addr)?1:0; return addr }
+
     fetchAddr(opcode) {
         var addressing = opcode['addressing']
-             if(addressing == 'IMPL') { return { addr:null, cycle:0 } }
-        else if(addressing == 'ACCU') { return { addr:null, cycle:0 } }
+             if(addressing == 'IMPL') { return null }
+        else if(addressing == 'ACCU') { return null }
         else if(addressing == 'IMME') { var d = this.addrIMME();   this.cc(1); return d }
         else if(addressing == 'RELA') { var d = this.addrRELA();   this.cc(1); return d }
         else if(addressing == '0PAG') { var d = this.addrZP();     this.cc(1); return d }
@@ -218,15 +205,13 @@ class CPU{
         else if(addressing == '0PGY') { var d = this.addrZPY();    this.cc(1); return d }
         else if(addressing == 'ABSY') { var d = this.addrABSY();   this.cc(2); return d }
         else if(addressing == 'IDRY') { var d = this.addrINDIRY(); this.cc(1); return d }
-        else { return { addr:null, cycle:0 } }
+        else { return null }
     } 
 
     step(){
         var opcode = this.fetchOpcode()
-        var oprand = this.fetchAddr(opcode)
+        var addr   = this.fetchAddr(opcode)
         var mnem   = opcode['mnem']
-        var addr   = oprand.addr
-        var cycle  = opcode['cycle'] + oprand.cycle
 
              if(mnem == 'NOP') { /** ^_^ */ }
         else if(mnem == 'LDA') { this.acc = this.busR(addr); this.srNZ(this.acc) }
@@ -345,14 +330,14 @@ class CPU{
         else if(mnem == 'RTS') { this.pc(this.pop16() + 1) }
         else if(mnem == 'RTI') { this.sr = this.pop() | R; this.pc(this.pop16()) }
 
-        else if(mnem == 'BCC') { if((this.sr & C) == 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BCS') { if((this.sr & C) != 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BPL') { if((this.sr & N) == 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BMI') { if((this.sr & N) != 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BNE') { if((this.sr & Z) == 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BEQ') { if((this.sr & Z) != 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BVC') { if((this.sr & V) == 0) cycle+=this.branch(addr) }
-        else if(mnem == 'BVS') { if((this.sr & V) != 0) cycle+=this.branch(addr) }
+        else if(mnem == 'BCC') { if((this.sr & C) == 0) this.branch(addr) }
+        else if(mnem == 'BCS') { if((this.sr & C) != 0) this.branch(addr) }
+        else if(mnem == 'BPL') { if((this.sr & N) == 0) this.branch(addr) }
+        else if(mnem == 'BMI') { if((this.sr & N) != 0) this.branch(addr) }
+        else if(mnem == 'BNE') { if((this.sr & Z) == 0) this.branch(addr) }
+        else if(mnem == 'BEQ') { if((this.sr & Z) != 0) this.branch(addr) }
+        else if(mnem == 'BVC') { if((this.sr & V) == 0) this.branch(addr) }
+        else if(mnem == 'BVS') { if((this.sr & V) != 0) this.branch(addr) }
 
         else if(mnem == 'PHA') { this.push(this.acc) }
         // https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag
@@ -371,13 +356,11 @@ class CPU{
         else if(mnem == 'BRK') { this.cc(1); this.BRK() }
 
         else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
-
-        return cycle
     }
 
     clock() {
-        if(this.cycleRemain <= 0) this.cycleRemain = this.step()
-        this.cycleRemain--
+        if(this.cycleCounter <= 0) this.step()
+        this.cycleCounter--
     }
 
     printStatus() {

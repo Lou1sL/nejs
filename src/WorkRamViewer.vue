@@ -165,6 +165,8 @@ export default {
         padding: 5px 0px;
     }
     .delrow-button{
+        cursor: pointer;
+        outline: none;
         margin-top:-6px;
         margin-right: -1px;
         width:20px;
@@ -185,6 +187,8 @@ export default {
         background-color: rgb(29, 29, 29);
     }
     .addrow-button{
+        cursor: pointer;
+        outline: none;
         background-color: rgb(44, 44, 44);
         text-align: center;
         color: white;
@@ -200,6 +204,8 @@ export default {
         background-color: rgb(29, 29, 29);
     }
     .button{
+        cursor: pointer;
+        outline: none;
         background-color: rgb(255, 0, 0);
         display: inline-block;
         text-align: center;

@@ -1,6 +1,11 @@
 
-const WIDTH = 256
+const WIDTH  = 256
 const HEIGHT = 240
+
+const SCALE_MODE = {
+    S2X : 0,
+    EPX : 1
+}
 
 class Color {
     constructor(r, g, b) {
@@ -34,22 +39,43 @@ const PALETTE = [
 
 class Screen {
     constructor(canvas) {
-        this.canvas  = canvas
-        this.ctx     = canvas.getContext('2d')
-        this.img     = this.ctx.createImageData(WIDTH, HEIGHT)
-        this.imgScr  = this.ctx.createImageData(this.canvas.width, this.canvas.height)
-        this.data    = new Uint32Array(this.img.data.buffer)
-        this.dataScr = new Uint32Array(this.imgScr.data.buffer)
+        this.canvas    = canvas
+        this.ctx       = canvas.getContext('2d')
+        this.img       = this.ctx.createImageData(WIDTH, HEIGHT)
+        this.imgScr    = this.ctx.createImageData(this.canvas.width, this.canvas.height)
+        this.data      = new Uint32Array(this.img.data.buffer)
+        this.dataScr   = new Uint32Array(this.imgScr.data.buffer)
+        this.scaleMode = SCALE_MODE.EPX
     }
+    setScaleMode(mode){ this.scaleMode = mode }
+    
     updatePixelPicker(x, y, index) {
         this.data[y * WIDTH + x] = PALETTE[index].color
     }
 
-    //EPX
     updateCanvas() {
-        const src = this.data
-        const dst = this.dataScr
+        switch(this.scaleMode){
+            case SCALE_MODE.S2X: this.simple2x(this.data,this.dataScr); break
+            case SCALE_MODE.EPX: this.EPX(this.data,this.dataScr);      break
+            default: this.simple2x(this.data,this.dataScr)
+        }
+        this.ctx.putImageData(this.imgScr,0,0)
+    }
 
+    simple2x(src,dst){
+        for (let y = 0; y < HEIGHT; ++y) {
+            for (let x = 0; x < WIDTH; ++x) {
+                const c = src[y * WIDTH + x]
+                const di = (y * (WIDTH * 2) + x) * 2
+                dst[di + 0]             = c
+                dst[di + 1]             = c
+                dst[di + WIDTH * 2 + 0] = c
+                dst[di + WIDTH * 2 + 1] = c
+            }
+        }
+    }
+
+    EPX(src,dst){
         for (let y = 0; y < HEIGHT; ++y) {
 
             const y0 = Math.max(y - 1,          0) | 0
@@ -74,9 +100,7 @@ class Screen {
                 dst[di + WIDTH * 2 + 1] = (r === d && r !== u && d !== l) ? d : c
             }
         }
-
-        this.ctx.putImageData(this.imgScr,0,0)
     }
 }
 
-export default Screen
+export { SCALE_MODE, Screen }

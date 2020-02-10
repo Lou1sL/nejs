@@ -1,4 +1,4 @@
-import Screen from './screen'
+import { SCALE_MODE, Screen } from './screen'
 import Mapper from './mapper'
 import { CPUBus, PPUBus, MIRRORING } from './bus'
 import CPU from './cpu'
@@ -79,8 +79,10 @@ class NES {
     }
     btnDown (btn) { this.pad.btnDown(btn) }
     btnUp   (btn) { this.pad.btnUp(btn)   }
+
+    setScaleMode(mode) { this.screen.setScaleMode(mode) }
 }
 
-export { BUTTON, NES }
+export { SCALE_MODE, BUTTON, NES }
 
 

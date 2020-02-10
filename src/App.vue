@@ -7,7 +7,8 @@
             <input id="rom-upload" type="file" ref="myFile" @change="selectedFile">
             <button v-on:click="reset" style="float:right;" class="big-red-button">RST</button>
             
-            
+            <div style="color:white;float:right;margin:2px 10px;font-size:10px;"><input class="toggle" type="checkbox" /> EPX</div>
+
             <h3 class="title"> NEJS </h3>
             <div class="info"> A simple NES emulator written in JavaScript.</div>
             <div class="info"> Running in browser completely.</div>
@@ -54,7 +55,7 @@
 
 <script>
 
-import { BUTTON, NES } from './nes/nes'
+import { SCALE_MODE ,BUTTON, NES } from './nes/nes'
 
 export default {
     name: "nejs",
@@ -141,6 +142,7 @@ export default {
         display: none;
     }
     .big-red-button {
+        cursor: pointer;
         background-color: rgb(255, 0, 0);
         display: inline-block;
         text-align: center;
@@ -151,6 +153,7 @@ export default {
         border: 2px solid white;
         font-family:sans-serif;
         font-size: 10px;
+        outline: none;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }
@@ -206,5 +209,42 @@ export default {
         font-size: 10px;
         padding-top: 50px;
         padding-bottom: 10px;
+    }
+
+    .toggle {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        border: 3px solid rgb(255, 255, 255);
+        width: 50px;
+        height: 15px;
+        display: inline-block;
+        position: relative;
+        overflow: hidden;
+        outline: none;
+        cursor: pointer;
+        background-color: #707070;
+        transition: background-color ease 0.3s;
+    }
+    .toggle:before {
+        content: " ";
+        display: block;
+        position: absolute;
+        z-index: 2;
+        width: 100%;
+        height: 100%;
+        background: rgb(0, 0, 0);
+        left: 0px;
+        top: 0px;
+        color: #fff;
+        white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        transition: all cubic-bezier(0.3, 1.0, 0.7, 1) 0.3s;
+    }
+    .toggle:checked {
+        background-color: rgb(255, 0, 0);
+    }
+    .toggle:checked:before {
+        left: 80%;
     }
 </style>
