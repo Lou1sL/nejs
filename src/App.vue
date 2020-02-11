@@ -6,9 +6,9 @@
             <label for="rom-upload" class="big-red-button">LOAD</label>
             <input id="rom-upload" type="file" ref="myFile" @change="selectedFile">
             <button v-on:click="reset" style="float:right;" class="big-red-button">RESET</button>
-            
+            <!--
             <div style="color:white;float:right;margin:2px 10px;font-size:10px;"><input class="toggle" type="checkbox" /> EPX</div>
-
+            -->
             <h3 class="title"> NEjS </h3>
             <div class="info"> A simple NES emulator written in JavaScript.</div>
             <div class="info"> Running in browser completely.</div>
@@ -121,7 +121,7 @@ export default {
             this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
         },
         reset(){
-            this.nes.rst()
+            this.nes.reset()
         },
      },
     computed: {  },

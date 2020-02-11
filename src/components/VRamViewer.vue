@@ -74,8 +74,8 @@ export default {
     destroyed(){  },
     methods:{
         updateRamView(){
-            var ram0 = this.nes != null ? this.nes.ppubus.vram0     : new Uint8Array(0x400)
-            var ram1 = this.nes != null ? this.nes.ppubus.vram1     : new Uint8Array(0x400)
+            var ram0 = this.nes != null ? this.nes.bus.ppubus.vram0     : new Uint8Array(0x400)
+            var ram1 = this.nes != null ? this.nes.bus.ppubus.vram1     : new Uint8Array(0x400)
 
             for(var r=0;r<0x40;r++){
                 this.vRam0Buffer[r] = []
@@ -89,7 +89,7 @@ export default {
                 this.$set(this.vRam1Buffer, r, row1)
             }
 
-            var oam  = this.nes != null ? this.nes.ppu.priOam.getArr() : new Uint8Array(0x100)
+            var oam  = this.nes != null ? this.nes.bus.ppu.priOam.getArr() : new Uint8Array(0x100)
             for(var r=0;r<0x10;r++){
                 this.oamBuffer[r] = []
                 var row = []

@@ -98,7 +98,7 @@ const OPCODE = {
 }
 
 class CPU{
-    constructor(bus){
+    constructor(){
         this.pcl = 0x00
         this.pch = 0x00
         this.acc = 0x00
@@ -106,10 +106,16 @@ class CPU{
         this.y   = 0x00
         this.sp  = 0xFF
         this.sr  = ~(N|V|B|D|I|Z|C)
-        this.bus = bus
 
         this.cycleCounter = 0
     }
+    //Bus accessing (little-endian)
+    bindBUS (bus)       { this.bus = bus                                    }
+    busR    (addr)      { return this.bus.r(addr)                           }
+    busR16  (addr)      { return this.busR(addr) | (this.busR(addr+1) << 8) }
+    busW    (addr,data) { this.bus.w(addr,data)                             }
+    busW16  (addr,data) { this.busW(addr,data); this.busW(addr+1,data >> 8) }
+    
     //https://www.pagetable.com/?p=410
     interrupt(int,sr){
         //Push current PC
@@ -121,7 +127,6 @@ class CPU{
         if(int != RST) this.busW(STACK_SHIFT + this.sp, sr)
         this.sp = (this.sp - 1) & 0xFF
         //Jmp INT
-        this.bus.r(int)
         this.pcl = this.busR(int)
         this.pch = this.busR(int+1)
         //Handle SR
@@ -138,11 +143,7 @@ class CPU{
     pc(val) { this.pcl = val & 0xFF; this.pch = (val >> 8) & 0xFF }
     //PC counts
     cc(n)   { this.pc(this.getPC() + n) }
-    //Bus accessing (little-endian)
-    busR(addr)        { return this.bus.r(addr)                           }
-    busR16(addr)      { return this.busR(addr) | (this.busR(addr+1) << 8) }
-    busW(addr,data)   { this.bus.w(addr,data)                             }
-    busW16(addr,data) { this.busW(addr,data); this.busW(addr+1,data >> 8) }
+
     //Stack manipulation
     push(data)   { this.busW(STACK_SHIFT + this.sp, data); this.sp = (this.sp - 1) & 0xFF  }
     push16(data) { this.push((data >> 8) & 0xFF); this.push(data & 0xFF)                   }

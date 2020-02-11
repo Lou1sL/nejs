@@ -54,7 +54,7 @@ export default {
     destroyed(){  },
     methods:{
         updateRamView(){
-            var ram = this.nes != null ? this.nes.cpubus.ram : new Uint8Array(0x800)
+            var ram = this.nes != null ? this.nes.bus.cpubus.ram : new Uint8Array(0x800)
             for(var r=0;r<0x80;r++){
                 this.ramViewBuffer[r] = []
                 var row = []
@@ -70,7 +70,7 @@ export default {
                     
                     var addr = parseInt("0x" + this.modify[row].inputAddr)
                     var data = parseInt("0x" + this.modify[row].inputData)
-                    this.nes.cpubus.ram[addr] = data
+                    this.nes.bus.cpubus.ram[addr] = data
                     if(this.modify[row].inputSet) this.modify[row].inputSet = false
                 }
             }

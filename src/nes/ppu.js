@@ -283,7 +283,7 @@ class RenderInfo {
 
 class PPU {
     //https://wiki.nesdev.com/w/index.php/PPU_rendering
-    constructor(bus,screen){
+    constructor(){
         //Sprite
         this.priOam = new OAM(PRI_OAM_SPRITE_COUNT)   //64 sprites for the frame (64*4(x,y,color,tile))
         this.secOam = new OAM(SEC_OAM_SPRITE_COUNT)   // 8 sprites for the current scanline
@@ -301,16 +301,18 @@ class PPU {
         this.stat = new Stat()    //0x2002
         this.reg_buffer = 0
 
-        this.bus = bus
-        this.screen = screen
-
         this.pixelIter = new RenderIterator()
         this.render = new RenderInfo()
     }
+
+    //Bus accessing
+    bindBUS (bus)       { this.bus = bus                  }
     busR    ()          { return this.bus.r(this.v.get()) }
     busW    (data)      { this.bus.w(this.v.get(),data)   }
     busRAddr(addr)      { return this.bus.r(addr)         }
     busWAddr(addr,data) { this.bus.w(addr,data)           }
+
+    bindScreen(screen)  { this.screen = screen            }
 
     incAddr () { this.v.set(this.v.get() + this.ctrl.getAddrInc()) }
 
@@ -505,7 +507,7 @@ class PPU {
         if(cycle == 0                  ) this.screen.updateCanvas()
     }
     vBlankScanline(cycle){
-        if(cycle == 1                  ) { this.stat.setVBlank(); if(this.ctrl.isVBlank()) this.bus.nmi() }
+        if(cycle == 1                  ) { this.stat.setVBlank(); if(this.ctrl.isVBlank()) this.bus.NMI() }
     }
     prerenderScanline(cycle){
         if(cycle == 1                  ) this.stat.clrAll()
