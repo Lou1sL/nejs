@@ -77,7 +77,8 @@ class Cartridge {
         this.romData = new RomData(rom)
         switch(this.romData.mapperNo){
             case 0  : this.mapper = new Mapper0(this.romData); break
-            default : throw('MapperNo.'+mapperNo+' not supported yet...')
+            case 4  : this.mapper = new MMC3(this.romData);    break
+            default : throw('MapperNo.'+this.romData.mapperNo+' not supported yet...')
         }
     }
     isHoriMirr() { return this.mapper.isHoriMirr }

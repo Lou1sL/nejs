@@ -65,7 +65,7 @@ export default {
         this.nes = new NES(this.$refs.myCanvas)
         this.$refs.WorkRamViewer.nes = this.nes
         this.$refs.VRamViewer.nes = this.nes
-        fetch('./SuperMarioBros.nes')
+        fetch('./SuperMarioBros3.nes')
             .then(res => res.blob())
             .then(blob => { this.loadFile(blob) })
     },
