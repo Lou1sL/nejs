@@ -4,8 +4,8 @@ import App from './App.vue'
 Vue.config.productionTip = false
 Vue.config.performance = false
 
-import RamViewer  from './WorkRamViewer.vue'
-import VRamViewer from './VRamViewer.vue'
+import RamViewer  from './components/WorkRamViewer.vue'
+import VRamViewer from './components/VRamViewer.vue'
 Vue.component('work-ram-viewer', RamViewer )
 Vue.component('v-ram-viewer'   , VRamViewer)
 

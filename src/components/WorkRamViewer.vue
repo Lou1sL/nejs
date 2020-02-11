@@ -178,7 +178,6 @@ export default {
         padding-left:1px;
         padding-bottom:2px;
         border: 1px solid rgb(83, 83, 83);
-        font-family:sans-serif;
         font-size: 10px;
         -webkit-transition-duration: 0.2s;
         transition-duration: 0.2s;
@@ -194,7 +193,6 @@ export default {
         color: white;
         padding:5px 10px;
         border: 1px solid rgb(83, 83, 83);
-        font-family:sans-serif;
         font-size: 10px;
         font-weight: 100;
         -webkit-transition-duration: 0.4s;
@@ -212,7 +210,6 @@ export default {
         color: white;
         padding:5px 10px;
         border: 1px solid white;
-        font-family:sans-serif;
         font-size: 10px;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
@@ -235,7 +232,6 @@ export default {
         margin: 0px 5px;
         padding:5px 10px;
         font-size: 10px;
-        font-family:sans-serif;
         background-color: rgb(24, 24, 24);
         border: 1px solid white;
     }

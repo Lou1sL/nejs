@@ -5,11 +5,11 @@
             <br>
             <label for="rom-upload" class="big-red-button">LOAD</label>
             <input id="rom-upload" type="file" ref="myFile" @change="selectedFile">
-            <button v-on:click="reset" style="float:right;" class="big-red-button">RST</button>
+            <button v-on:click="reset" style="float:right;" class="big-red-button">RESET</button>
             
             <div style="color:white;float:right;margin:2px 10px;font-size:10px;"><input class="toggle" type="checkbox" /> EPX</div>
 
-            <h3 class="title"> NEJS </h3>
+            <h3 class="title"> NEjS </h3>
             <div class="info"> A simple NES emulator written in JavaScript.</div>
             <div class="info"> Running in browser completely.</div>
             <div class="info"> Using EPX algorithm on screen scaling.</div>
@@ -131,6 +131,7 @@ export default {
 </script>
 
 <style lang="less">
+    @import './assets/font/dragon.css';
     html, body {
         height: auto;
         width: 100%;
@@ -153,8 +154,7 @@ export default {
         padding-bottom:5px;
         width: 60px;
         border: 2px solid white;
-        font-family:sans-serif;
-        font-size: 10px;
+        font-size: 12px;
         outline: none;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
@@ -167,9 +167,10 @@ export default {
         color: red;
         text-align:center;
         width:100%;
-        font-size: 18px;
         margin-top:50px;
         background-color: white;
+        font-size: 18px;
+        padding: 2px 0px;
     }
     .info{
         color: white;
