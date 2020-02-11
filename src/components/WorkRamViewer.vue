@@ -28,9 +28,9 @@
             <button v-on:click="modify=[]" class="addrow-button" style="margin-left:-1px;width:79px;">Delete All</button>
         </div>
         <div style="width:100%;margin-top:5px;">
-            <label for="cheat-upload" class="addrow-button" style="padding:5px 10px 6px 10px;margin-left:250px;">Load</label>
+            <label for="cheat-upload" class="addrow-button" style="padding:6px 10px 6px 10px;margin-left:250px;font-family:sans-serif;">Load</label>
             <input id="cheat-upload" type="file" ref="cheatFile" @change="loadFile">
-            <button v-on:click="saveFile" class="addrow-button" style="margin-left:-1px;">Save</button>
+            <button v-on:click="saveFile" class="addrow-button" style="margin-left:-1px;padding:5px 10px 6px 10px;font-family:sans-serif;">Save</button>
         </div>
         
     </div>
