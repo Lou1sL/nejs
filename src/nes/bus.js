@@ -175,6 +175,55 @@ class DMATransfer {
 }
 
 
+
+/**
+ * NES CPU BUS (16-bit)
+ * 
+ * CPU.....0.....00 -> WORK-RAM (low 11-bit)
+ *      .     .
+ *      .     ...01 -> PPU Registers (low 3-bit)
+ *      .     .
+ *      .     ...10.....0000 0000.....00 -> APU Pulse Wave Registers (3-bit)
+ *      .     .      .             .
+ *      .     .      .             ...01 -> APU Triangle & Noise Registers (3-bit)
+ *      .     .      .             .
+ *      .     .      .             ...10 -> APU DMC, APU Frame Counter, PPU DMA, Joypad 
+ *      .     .      .             .
+ *      .     .      .             ...11 -> CPU Test Mode (3-bit)
+ *      .     .      .
+ *      .     .      ...XXXX XXXX -> ExROM (13-bit) --> TO CARTRIDGE
+ *      .     .
+ *      .     ...11 -> SRAM (13-bit) -----------------> TO CARTRIDGE
+ *      .
+ *      ...1 -> PRG-ROM (15-bit) ---------------------> TO CARTRIDGE
+ * 
+ * For more details on cartridge port: https://wiki.nesdev.com/w/index.php/Cartridge_connector
+ * 
+ */
+
+/*
+TODO
+
+//First 3 bits control sub bus
+const CPU_SUB_BUS_MASK = 0b1110000000000000
+const CPU_SUB_BUS_0    = 0b0000000000000000
+const CPU_SUB_BUS_1    = 0b0010000000000000
+const CPU_SUB_BUS_2    = 0b0100000000000000
+
+const CPU_SUB_BUS_3    = 0b0110000000000000 // To Cartridge SRAM
+const CPU_SUB_BUS_4    = 0b1000000000000000 // To Cartridge PRG-ROM
+
+const CPU_RAM_MASK      = 0b0000011111111111
+const CPU_PPU_MASK      = 0b0000000000000111
+
+
+const CPU_APU_MASK      = 0b0000000000000111
+
+var CPU_MEM = (addr) =>{
+    var sel = addr & CPU_MEM_SELECT
+}
+*/
+
 class CPUBUS {
     constructor(){
         this.dma = new DMATransfer(this)
@@ -190,7 +239,7 @@ class CPUBUS {
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
             return this.ram[addr%CPU_RAM_SIZE]
         }
-        else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < 0x4000)){
+        else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < CPU_MEM_IO_APU_PU1A)){
             switch((addr-CPU_RAM_ADDR_SIZE) % 0x08 + 0x2000){
                 case CPU_MEM_IO_PPU_CTRL: return 0
                 case CPU_MEM_IO_PPU_MASK: return 0
@@ -202,13 +251,13 @@ class CPUBUS {
                 case CPU_MEM_IO_PPU_DATA: return this.ppu.REG_DATA_R()
             }
         }
-        else if((addr >= 0x4000) && (addr <= 0x4013)){
+        else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             return 0
         }
-        else if(addr==0x4015){
+        else if(addr==CPU_MEM_IO_APU_CTST){
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
@@ -217,8 +266,9 @@ class CPUBUS {
         else if(addr==CPU_MEM_IO_PAD_PAD1){
             return this.pad.r1()
         }
-        else if((addr >= 0x4000) && (addr <= 0x4013)){
-            //TODO APU
+        else if((addr>=CPU_MEM_IO_TEST0) && (addr<=CPU_MEM_IO_TEST7)){
+            console.log('CPU_BUS_R: test address. @0x'+addr.toString(16))
+            return 0
         }
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
             return this.cart.EXROMRead(addr-CPU_MEM_ExROM)
@@ -237,7 +287,7 @@ class CPUBUS {
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
             this.ram[addr%CPU_RAM_SIZE] = data
         }
-        else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < 0x4000)){
+        else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < CPU_MEM_IO_APU_PU1A)){
             switch((addr-CPU_RAM_ADDR_SIZE) % 0x08 + 0x2000){
                 case CPU_MEM_IO_PPU_CTRL: this.ppu.REG_CTRL_W(data); break
                 case CPU_MEM_IO_PPU_MASK: this.ppu.REG_MASK_W(data); break
@@ -249,13 +299,13 @@ class CPUBUS {
                 case CPU_MEM_IO_PPU_DATA: this.ppu.REG_DATA_W(data); break
             }
         }
-        else if((addr >= 0x4000) && (addr <= 0x4013)){
+        else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             this.dma.trigger(data)
         }
-        else if(addr==0x4015){
+        else if(addr==CPU_MEM_IO_APU_CTST){
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
@@ -263,6 +313,9 @@ class CPUBUS {
         }
         else if(addr==CPU_MEM_IO_PAD_PAD1){
             //TODO APU
+        }
+        else if((addr>=CPU_MEM_IO_TEST0) && (addr<=CPU_MEM_IO_TEST7)){
+            console.log('CPU_BUS_W: test address. @0x'+addr.toString(16))
         }
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
             this.cart.EXROMWrite(addr-CPU_MEM_ExROM,data)
@@ -277,6 +330,7 @@ class CPUBUS {
         }
     }
 }
+
 class PPUBUS {
     constructor(){
         this.vram0  = new Uint8Array(PPU_RAM_SIZE/2) //Dynamic
@@ -353,12 +407,15 @@ class PPUBUS {
 }
 
 class BUS {
-    constructor   ()     { this.cpubus = new CPUBUS(); this.ppubus = new PPUBUS()                                                      }
-    connCPU       (cpu)  { this.cpu = cpu; this.cpu.bindBUS(this.cpubus); this.cpubus.bindCPU(this.cpu); this.ppubus.bindCPU(this.cpu) }
-    connPPU       (ppu)  { this.ppu = ppu; this.ppu.bindBUS(this.ppubus); this.cpubus.bindPPU(this.ppu); this.ppubus.bindPPU(this.ppu) }
-    connPad       (pad)  { this.pad = pad; this.cpubus.bindJoypad(this.pad)                                                            }
-    connCartridge (cart) { this.cart = cart; this.cpubus.bindCartridge(this.cart); this.ppubus.bindCartridge(this.cart)                }
-    connScreen    (scr)  { this.scr = scr; this.ppu.bindScreen(this.scr)                                                               }
+    constructor   ()     {
+        this.cpubus = new CPUBUS()
+        this.ppubus = new PPUBUS()
+    }
+    connCPU       (cpu)  { this.cpu = cpu; this.cpu.bindBUS(this.cpubus); this.cpubus.bindCPU(this.cpu); this.ppubus.bindCPU(this.cpu)           }
+    connPPU       (ppu)  { this.ppu = ppu; this.ppu.bindBUS(this.ppubus); this.cpubus.bindPPU(this.ppu); this.ppubus.bindPPU(this.ppu)           }
+    connPad       (pad)  { this.pad = pad; this.cpubus.bindJoypad(this.pad)                                                                      }
+    connCartridge (cart) { this.cart = cart; this.cart.bindBUS(this); this.cpubus.bindCartridge(this.cart); this.ppubus.bindCartridge(this.cart) }
+    connScreen    (scr)  { this.scr = scr; this.ppu.bindScreen(this.scr)                                                                         }
 
     getCPU()   { return this.cpu }
     getPPU()   { return this.ppu }
