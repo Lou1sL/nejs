@@ -13,7 +13,7 @@
             <div class="info"> A simple NES emulator written in JavaScript.</div>
             <div class="info"> Running in browser completely.</div>
             <div class="info"> Using EPX algorithm on screen scaling.</div>
-            <div class="info"> PS: No audio & only supports Mapper0 currently.</div>
+            <div class="info"> PS: No audio & only supports mapper 0&4 (NROM,MMC3) currently.</div>
             <a class="info" href="https://github.com/RyuBAI/nejs/">Github link</a>
             <br>
             <br>
@@ -65,7 +65,7 @@ export default {
         this.nes = new NES(this.$refs.myCanvas)
         this.$refs.WorkRamViewer.nes = this.nes
         this.$refs.VRamViewer.nes = this.nes
-        fetch('./SuperMarioBros.nes')
+        fetch('./SuperMarioBros3.nes')
             .then(res => res.blob())
             .then(blob => { this.loadFile(blob) })
     },

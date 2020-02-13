@@ -8,8 +8,8 @@ const SCALE_MODE = {
 }
 
 class Color {
-    constructor(r, g, b) {
-        this.color = ((r & 0xFF) << (8 * 0)) | ((g & 0xFF) << (8 * 1)) | ((b & 0xFF) << (8 * 2)) | ((0xFF & 0xFF) << (8 * 3))
+    constructor(r, g, b, a = 0xFF) {
+        this.color = ((r & 0xFF) << (8 * 0)) | ((g & 0xFF) << (8 * 1)) | ((b & 0xFF) << (8 * 2)) | ((a & 0xFF) << (8 * 3))
     }
 }
 
