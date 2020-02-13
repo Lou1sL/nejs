@@ -31,7 +31,7 @@ const MMC3_CHR_BANK_7   = 0b0001110000000000 // 0x1C00 - 0x1FFF
 //http://wiki.nesdev.com/w/index.php/MMC3
 const MMC3_BANKSEL_CHRA12INV = 0b10000000
 const MMC3_BANKSEL_PRGSWPMOD = 0b01000000
-const MMC3_BANKSEL_UNIMPLIED = 0b00111000
+///// MMC3_BANKSEL_UNIMPLIED = 0b00111000
 const MMC3_BANKSEL_REGSELECT = 0b00000111
 
 class MMC3 {
@@ -54,23 +54,36 @@ class MMC3 {
         this.sram = new Uint8Array(CART_SRAM_SIZE)
     }
 
-    setPRGBank(){
-
-    }
-
-
     isHoriMirr()          { return this.isHori }
     PRGRead(addr){
+        var bank = addr & MMC3_CHR_BANK_SEL
+        var shft = addr & MMC3_CHR_BANK_SFT
+        var swap = this.bankSel & MMC3_BANKSEL_PRGSWPMOD != 0
+        var bankSel = 0
+        switch(bank){
+            case MMC3_PRG_BANK_0: bankSel = (swap?this.prgBankLen-2:(this.bankDat[6] & 0x3F)); break
+            case MMC3_PRG_BANK_1: bankSel =  this.bankDat[7]                                 ; break
+            case MMC3_PRG_BANK_2: bankSel = (swap?(this.bankDat[6] & 0x3F):this.prgBankLen-2); break
+            case MMC3_PRG_BANK_3: bankSel =  this.prgBankLen-1                               ; break
+        }
+        return this.prgBank[bankSel][shft]
+    }
+    CHRRead(addr){
         var bank = addr & MMC3_PRG_BANK_SEL
         var shft = addr & MMC3_PRG_BANK_SFT
-        var swap = this.bankSel & MMC3_BANKSEL_PRGSWPMOD != 0
+        var a12i = this.bankSel & MMC3_BANKSEL_CHRA12INV != 0
+        var bankSel = 0
         switch(bank){
-            case MMC3_PRG_BANK_0: return this.prgBank[(swap?this.prgBankLen-2:this.bankDat[6])][shft]
-            case MMC3_PRG_BANK_1: return this.prgBank[this.bankDat[7]][shft]
-            case MMC3_PRG_BANK_2: return this.prgBank[(swap?this.bankDat[6]:this.prgBankLen-2)][shft]
-            case MMC3_PRG_BANK_3: return this.prgBank[this.prgBankLen-1][shft]
+            case MMC3_CHR_BANK_0: bankSel = a12i ? this.bankDat[2] : this.bankDat[0]; break
+            case MMC3_CHR_BANK_1: bankSel = a12i ? this.bankDat[3] : this.bankDat[0]; break
+            case MMC3_CHR_BANK_2: bankSel = a12i ? this.bankDat[4] : this.bankDat[1]; break
+            case MMC3_CHR_BANK_3: bankSel = a12i ? this.bankDat[5] : this.bankDat[1]; break
+            case MMC3_CHR_BANK_4: bankSel = a12i ? this.bankDat[0] : this.bankDat[2]; break
+            case MMC3_CHR_BANK_5: bankSel = a12i ? this.bankDat[0] : this.bankDat[3]; break
+            case MMC3_CHR_BANK_6: bankSel = a12i ? this.bankDat[1] : this.bankDat[4]; break
+            case MMC3_CHR_BANK_7: bankSel = a12i ? this.bankDat[1] : this.bankDat[5]; break
         }
-
+        return this.chrBank[bankSel>>>1][shft]
     }
     PRGWrite(addr,data){
         var bank = addr & MMC3_PRG_BANK_SEL
@@ -104,14 +117,7 @@ class MMC3 {
             break
         }
     }
-    CHRRead(addr){
-        
-        
-        
-        
-        
-        
-    }
+
     CHRWrite(addr,data){
         
         

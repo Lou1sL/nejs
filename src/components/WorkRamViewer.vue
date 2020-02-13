@@ -45,7 +45,7 @@ export default {
             ramViewBuffer:[],
             autoUpdateRamView:true,
             modify:[
-                { inputAddr:'00ce', inputData:'70', inputLock:true, inputSet:false, inputAddrValid:true, inputDataValid:true }
+                { inputAddr:'', inputData:'', inputLock:false, inputSet:false, inputAddrValid:false, inputDataValid:false }
             ]
         }
     },

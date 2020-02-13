@@ -14,7 +14,8 @@
             <div class="info"> Running in browser completely.</div>
             <div class="info"> Using EPX algorithm on screen scaling.</div>
             <div class="info"> PS: No audio & only supports mapper 0&4 (NROM,MMC3) currently.</div>
-            <a class="info" href="https://github.com/RyuBAI/nejs/">Github link</a>
+            <a class="info" href="https://github.com/RyuBAI/nejs/">Github Repo</a> &nbsp;
+            <a class="info" href="http://tuxnes.sourceforge.net/nesmapper.txt">Game Mapper List</a>
             <br>
             <br>
             <div class="key-table-wrapper">
