@@ -43,7 +43,7 @@ export default {
     data() { 
         return {
             ramViewBuffer:[],
-            autoUpdateRamView:true,
+            autoUpdateRamView:false,
             modify:[
                 { inputAddr:'', inputData:'', inputLock:false, inputSet:false, inputAddrValid:false, inputDataValid:false }
             ]

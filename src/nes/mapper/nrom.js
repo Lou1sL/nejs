@@ -14,8 +14,9 @@ class NROM {
         this.chr.set(romData.chr)
         if(romData.prgSize < CART_PRGROM_SIZE) this.prg.set(romData.prg,romData.prgSize)
     }
-
-    isHoriMirr()          { return this.isHori     }
+    bindBUS    (bus)      { this.bus = bus         }
+    isHoriMirr ()         { return this.isHori     }
+    scanlineSig()         {                        }
 
     PRGRead   (addr)      { return this.prg[addr]  }
     PRGWrite  (addr,data) { this.prg[addr] = data  }

@@ -39,14 +39,16 @@ class Cartridge {
     constructor(rom){
         var romData = new RomData(rom)
         switch(romData.mapperNo){
-            case 0  : this.mapper = new NROM(romData,this.bus); break
-            case 4  : this.mapper = new MMC3(romData,this.bus); break
+            case 0  : this.mapper = new NROM(romData); break
+            case 4  : this.mapper = new MMC3(romData); break
             default : throw('MapperNo.'+romData.mapperNo+' not supported yet...')
         }
     }
-    bindBUS(bus) { this.bus = bus }
+    bindBUS(bus) { this.mapper.bindBUS(bus) }
     
     isHoriMirr ()          { return this.mapper.isHoriMirr()    }
+    scanlineSig()          { this.mapper.scanlineSig()          }
+    
     PRGRead    (addr)      { return this.mapper.PRGRead(addr)   }
     PRGWrite   (addr,data) { this.mapper.PRGWrite(addr,data)    }
     CHRRead    (addr)      { return this.mapper.CHRRead(addr)   }

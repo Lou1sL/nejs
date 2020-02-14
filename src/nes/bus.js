@@ -160,7 +160,7 @@ class DMATransfer {
                 if(this.isEvenClk()){
                     this.data = this.bus.r((this.page << 8) | this.addr)
                 }else{
-                    this.bus.ppu.priOam.setEle(this.addr,this.data)
+                    this.bus.mainBus.ppu.priOam.setEle(this.addr,this.data)
                     this.addr++
                     if(this.addr>0xFF){
                         this.addr = 0x00
@@ -225,16 +225,11 @@ var CPU_MEM = (addr) =>{
 */
 
 class CPUBUS {
-    constructor(){
+    constructor(mainBus){
+        this.mainBus = mainBus
         this.dma = new DMATransfer(this)
         this.ram = new Uint8Array(CPU_RAM_SIZE)
     }
-
-    bindCPU       (cpu)  { this.cpu  = cpu  }
-    bindPPU       (ppu)  { this.ppu  = ppu  }
-    bindCartridge (cart) { this.cart = cart }
-    bindJoypad    (pad)  { this.pad  = pad  }
-
     r(addr){
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
             return this.ram[addr%CPU_RAM_SIZE]
@@ -243,12 +238,12 @@ class CPUBUS {
             switch((addr-CPU_RAM_ADDR_SIZE) % 0x08 + 0x2000){
                 case CPU_MEM_IO_PPU_CTRL: return 0
                 case CPU_MEM_IO_PPU_MASK: return 0
-                case CPU_MEM_IO_PPU_STAT: return this.ppu.REG_STAT_R()
+                case CPU_MEM_IO_PPU_STAT: return this.mainBus.ppu.REG_STAT_R()
                 case CPU_MEM_IO_PPU_OAMA: return 0
-                case CPU_MEM_IO_PPU_OAMD: return this.ppu.REG_OAMD_R()
+                case CPU_MEM_IO_PPU_OAMD: return this.mainBus.ppu.REG_OAMD_R()
                 case CPU_MEM_IO_PPU_SCRL: return 0
                 case CPU_MEM_IO_PPU_ADDR: return 0
-                case CPU_MEM_IO_PPU_DATA: return this.ppu.REG_DATA_R()
+                case CPU_MEM_IO_PPU_DATA: return this.mainBus.ppu.REG_DATA_R()
             }
         }
         else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
@@ -261,27 +256,26 @@ class CPUBUS {
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
-            return this.pad.r0()
+            return this.mainBus.pad.r0()
         }
         else if(addr==CPU_MEM_IO_PAD_PAD1){
-            return this.pad.r1()
+            return this.mainBus.pad.r1()
         }
         else if((addr>=CPU_MEM_IO_TEST0) && (addr<=CPU_MEM_IO_TEST7)){
             console.log('CPU_BUS_R: test address. @0x'+addr.toString(16))
-            return 0
         }
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
-            return this.cart.EXROMRead(addr-CPU_MEM_ExROM)
+            return this.mainBus.cart.EXROMRead(addr-CPU_MEM_ExROM)
         }
         else if((addr>=CPU_MEM_SRAM) && (addr<CPU_MEM_PRG_ROM)){
-            return this.cart.SRAMRead(addr-CPU_MEM_SRAM)
+            return this.mainBus.cart.SRAMRead(addr-CPU_MEM_SRAM)
         }
         else if((addr>=CPU_MEM_PRG_ROM) && (addr<CPU_ADDR_SIZE)){
-            return this.cart.PRGRead(addr-CPU_MEM_PRG_ROM)
+            return this.mainBus.cart.PRGRead(addr-CPU_MEM_PRG_ROM)
         }else{
             console.error('CPU_BUS_R: invalid address. @0x'+addr.toString(16))
-            return 0
         }
+        return 0
     }
     w(addr,data){
         if((addr >= 0) && (addr<CPU_RAM_ADDR_SIZE)){
@@ -289,14 +283,14 @@ class CPUBUS {
         }
         else if((addr >= CPU_RAM_ADDR_SIZE) && (addr < CPU_MEM_IO_APU_PU1A)){
             switch((addr-CPU_RAM_ADDR_SIZE) % 0x08 + 0x2000){
-                case CPU_MEM_IO_PPU_CTRL: this.ppu.REG_CTRL_W(data); break
-                case CPU_MEM_IO_PPU_MASK: this.ppu.REG_MASK_W(data); break
+                case CPU_MEM_IO_PPU_CTRL: this.mainBus.ppu.REG_CTRL_W(data); break
+                case CPU_MEM_IO_PPU_MASK: this.mainBus.ppu.REG_MASK_W(data); break
                 case CPU_MEM_IO_PPU_STAT: break
-                case CPU_MEM_IO_PPU_OAMA: this.ppu.REG_OAMA_W(data); break
-                case CPU_MEM_IO_PPU_OAMD: this.ppu.REG_OAMD_W(data); break
-                case CPU_MEM_IO_PPU_SCRL: this.ppu.REG_SCRL_W(data); break
-                case CPU_MEM_IO_PPU_ADDR: this.ppu.REG_ADDR_W(data); break
-                case CPU_MEM_IO_PPU_DATA: this.ppu.REG_DATA_W(data); break
+                case CPU_MEM_IO_PPU_OAMA: this.mainBus.ppu.REG_OAMA_W(data); break
+                case CPU_MEM_IO_PPU_OAMD: this.mainBus.ppu.REG_OAMD_W(data); break
+                case CPU_MEM_IO_PPU_SCRL: this.mainBus.ppu.REG_SCRL_W(data); break
+                case CPU_MEM_IO_PPU_ADDR: this.mainBus.ppu.REG_ADDR_W(data); break
+                case CPU_MEM_IO_PPU_DATA: this.mainBus.ppu.REG_DATA_W(data); break
             }
         }
         else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
@@ -309,7 +303,7 @@ class CPUBUS {
             //TODO APU
         }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
-            this.pad.w(data)
+            this.mainBus.pad.w(data)
         }
         else if(addr==CPU_MEM_IO_PAD_PAD1){
             //TODO APU
@@ -318,13 +312,13 @@ class CPUBUS {
             console.log('CPU_BUS_W: test address. @0x'+addr.toString(16))
         }
         else if((addr>=CPU_MEM_ExROM) && (addr<CPU_MEM_SRAM)){
-            this.cart.EXROMWrite(addr-CPU_MEM_ExROM,data)
+            this.mainBus.cart.EXROMWrite(addr-CPU_MEM_ExROM,data)
         }
         else if((addr>=CPU_MEM_SRAM) && (addr<CPU_MEM_PRG_ROM)){
-            this.cart.SRAMWrite(addr-CPU_MEM_SRAM,data)
+            this.mainBus.cart.SRAMWrite(addr-CPU_MEM_SRAM,data)
         }
         else if((addr>=CPU_MEM_PRG_ROM) && (addr<CPU_ADDR_SIZE)){
-            this.cart.PRGWrite(addr-CPU_MEM_PRG_ROM,data)
+            this.mainBus.cart.PRGWrite(addr-CPU_MEM_PRG_ROM,data)
         }else{
             console.error('CPU_BUS_W: invalid address. @0x'+addr.toString(16))
         }
@@ -332,25 +326,24 @@ class CPUBUS {
 }
 
 class PPUBUS {
-    constructor(){
+    constructor(mainBus){
+        this.mainBus = mainBus
         this.vram0  = new Uint8Array(PPU_RAM_SIZE/2) //Dynamic
         this.vram1  = new Uint8Array(PPU_RAM_SIZE/2) //Dynamic
         this.plet   = new Uint8Array(PPU_PLT_SIZE  ) //Static
     }
 
-    bindPPU      (ppu) { this.ppu    = ppu  }
-    bindCPU      (cpu) { this.cpu    = cpu  }
-    NMI          ()    { this.cpu.NMI()     }
-    bindCartridge(cart){ this.cart   = cart }
+    NMI          ()    { this.mainBus.cpu.NMI()          }
+    scanlineSig  ()    { this.mainBus.cart.scanlineSig() }
     
     r(addr){
         addr &= 0x3FFF
-        if(addr >= 0 && addr < PPU_CHR_SIZE) return this.cart.CHRRead(addr)
+        if(addr >= 0 && addr < PPU_CHR_SIZE) return this.mainBus.cart.CHRRead(addr)
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
             addr &= 0x0FFF
             var ramsel = addr & PPU_RAM_ADDR_MASK
             addr &= 0x03FF
-            if(this.cart.isHoriMirr()){
+            if(this.mainBus.cart.isHoriMirr()){
                      if (ramsel == PPU_RAM0_SWITCH) return this.vram0[addr]
                 else if (ramsel == PPU_RAM1_SWITCH) return this.vram0[addr]
                 else if (ramsel == PPU_RAM2_SWITCH) return this.vram1[addr]
@@ -368,20 +361,20 @@ class PPUBUS {
             else if (addr == 0x14) addr = 0x04
             else if (addr == 0x18) addr = 0x08
             else if (addr == 0x1C) addr = 0x0C
-            return this.plet[addr] & (this.ppu.mask.isGray() ? 0x30 : 0xFF)
+            return this.plet[addr] & (this.mainBus.ppu.mask.isGray() ? 0x30 : 0xFF)
         }else{
             console.error('PPU_BUS_R: invalid address. @0x'+addr.toString(16))
-            return 0
         }
+        return 0
     }
     w(addr,data){
         addr &= 0x3FFF
-        if(addr >= 0 && addr < PPU_CHR_SIZE) this.cart.CHRWrite(addr, data)
+        if(addr >= 0 && addr < PPU_CHR_SIZE) this.mainBus.cart.CHRWrite(addr, data)
         else if(addr >= PPU_CHR_SIZE && addr < PPU_MEM_IMAGE_PALET){
             addr &= 0x0FFF
             var ramsel = addr & PPU_RAM_ADDR_MASK
             addr &= 0x03FF
-            if(this.cart.isHoriMirr()){
+            if(this.mainBus.cart.isHoriMirr()){
                      if (ramsel == PPU_RAM0_SWITCH) this.vram0[addr] = data
                 else if (ramsel == PPU_RAM1_SWITCH) this.vram0[addr] = data
                 else if (ramsel == PPU_RAM2_SWITCH) this.vram1[addr] = data
@@ -408,19 +401,14 @@ class PPUBUS {
 
 class BUS {
     constructor   ()     {
-        this.cpubus = new CPUBUS()
-        this.ppubus = new PPUBUS()
+        this.cpubus = new CPUBUS(this)
+        this.ppubus = new PPUBUS(this)
     }
-    connCPU       (cpu)  { this.cpu = cpu; this.cpu.bindBUS(this.cpubus); this.cpubus.bindCPU(this.cpu); this.ppubus.bindCPU(this.cpu)           }
-    connPPU       (ppu)  { this.ppu = ppu; this.ppu.bindBUS(this.ppubus); this.cpubus.bindPPU(this.ppu); this.ppubus.bindPPU(this.ppu)           }
-    connPad       (pad)  { this.pad = pad; this.cpubus.bindJoypad(this.pad)                                                                      }
-    connCartridge (cart) { this.cart = cart; this.cart.bindBUS(this); this.cpubus.bindCartridge(this.cart); this.ppubus.bindCartridge(this.cart) }
-    connScreen    (scr)  { this.scr = scr; this.ppu.bindScreen(this.scr)                                                                         }
-
-    getCPU()   { return this.cpu }
-    getPPU()   { return this.ppu }
-    getPad()   { return this.pad }
-    getScr()   { return this.scr }
+    connCPU       (cpu)  { this.cpu = cpu; this.cpu.bindBUS(this.cpubus) }
+    connPPU       (ppu)  { this.ppu = ppu; this.ppu.bindBUS(this.ppubus) }
+    connPad       (pad)  { this.pad = pad;                               }
+    connCartridge (cart) { this.cart = cart; this.cart.bindBUS(this)     }
+    connScreen    (scr)  { this.scr = scr; this.ppu.bindScreen(this.scr) }
 
     resetAll() { this.cpu.RST(); this.cpubus.dma.reset(); this.ppu.RST() }
 

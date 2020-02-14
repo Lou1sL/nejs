@@ -360,6 +360,7 @@ class CPU{
     }
 
     clock() {
+        //console.log(this.getPC().toString(16))
         if(this.cycleCounter <= 0) this.step()
         this.cycleCounter--
     }

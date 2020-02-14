@@ -35,13 +35,13 @@ const MMC3_BANKSEL_PRGSWPMOD = 0b01000000
 const MMC3_BANKSEL_REGSELECT = 0b00000111
 
 class MMC3 {
-    constructor(romData,bus){
+    constructor(romData){
         this.isHori     = romData.isHoriMirr
         this.is4Scr     = romData.is4Scr
-        this.bus        = bus
         this.bankSel    = 0x00
         this.bankDat    = new Uint8Array(8)
         this.irqLatch   = 0x00
+        this.irqCounter = 0x00
         this.irqEnable  = false
 
         this.prgBank = []
@@ -53,12 +53,19 @@ class MMC3 {
         
         this.sram = new Uint8Array(CART_SRAM_SIZE)
     }
+    bindBUS     (bus) { this.bus = bus     }
+    isHoriMirr  ()    { return this.isHori }
+    scanlineSig ()    { 
+        if(this.irqCounter == 0) this.irqCounter = this.irqLatch
+        else this.irqCounter--
+        if(this.irqEnable && (this.irqCounter == 0))this.bus.cpu.IRQ()
+    }
 
-    isHoriMirr()          { return this.isHori }
+
     PRGRead(addr){
-        var bank = addr & MMC3_CHR_BANK_SEL
-        var shft = addr & MMC3_CHR_BANK_SFT
-        var swap = this.bankSel & MMC3_BANKSEL_PRGSWPMOD != 0
+        var bank = addr & MMC3_PRG_BANK_SEL
+        var shft = addr & MMC3_PRG_BANK_SFT
+        var swap = (this.bankSel & MMC3_BANKSEL_PRGSWPMOD) != 0
         var bankSel = 0
         switch(bank){
             case MMC3_PRG_BANK_0: bankSel = (swap?this.prgBankLen-2:(this.bankDat[6] & 0x3F)); break
@@ -68,10 +75,50 @@ class MMC3 {
         }
         return this.prgBank[bankSel][shft]
     }
-    CHRRead(addr){
+    PRGWrite(addr,data){
         var bank = addr & MMC3_PRG_BANK_SEL
-        var shft = addr & MMC3_PRG_BANK_SFT
-        var a12i = this.bankSel & MMC3_BANKSEL_CHRA12INV != 0
+        var even = (addr & 1) == 0
+
+        switch(bank){
+            case MMC3_PRG_BANK_0: //Bank select, Bank data
+            if(even) { this.bankSel = data                                        }
+            else     { this.bankDat[this.bankSel & MMC3_BANKSEL_REGSELECT] = data }
+            break
+            case MMC3_PRG_BANK_1: //Mirroring, PRG RAM protect
+            if(even){ if(!this.is4Scr) this.isHori = (data & 1) != 0 }
+            else    {                                                }
+            break
+            case MMC3_PRG_BANK_2: //IRQ latch, IRQ reload
+            if(even){ this.irqLatch = data }
+            else    { this.irqCounter = 0  }
+            break
+            case MMC3_PRG_BANK_3: //IRQ disable, IRQ enable
+            if(even){ this.irqEnable = false }
+            else    { this.irqEnable = true  }
+            break
+        }
+    }
+    CHRRead(addr){
+        var bank = addr & MMC3_CHR_BANK_SEL
+        var shft = addr & MMC3_CHR_BANK_SFT
+        var a12i = (this.bankSel & MMC3_BANKSEL_CHRA12INV) != 0
+        var bankSel = 0
+        switch(bank){
+            case MMC3_CHR_BANK_0: bankSel = a12i ? this.bankDat[2] : (this.bankDat[0] & 0xFE); break
+            case MMC3_CHR_BANK_1: bankSel = a12i ? this.bankDat[3] : (this.bankDat[0] |    1); break
+            case MMC3_CHR_BANK_2: bankSel = a12i ? this.bankDat[4] : (this.bankDat[1] & 0xFE); break
+            case MMC3_CHR_BANK_3: bankSel = a12i ? this.bankDat[5] : (this.bankDat[1] |    1); break
+            case MMC3_CHR_BANK_4: bankSel = a12i ? (this.bankDat[0] & 0xFE) : this.bankDat[2]; break
+            case MMC3_CHR_BANK_5: bankSel = a12i ? (this.bankDat[0] |    1) : this.bankDat[3]; break
+            case MMC3_CHR_BANK_6: bankSel = a12i ? (this.bankDat[1] & 0xFE) : this.bankDat[4]; break
+            case MMC3_CHR_BANK_7: bankSel = a12i ? (this.bankDat[1] |    1) : this.bankDat[5]; break
+        }
+        return this.chrBank[bankSel][shft]
+    }
+    CHRWrite  (addr,data) {
+        var bank = addr & MMC3_CHR_BANK_SEL
+        var shft = addr & MMC3_CHR_BANK_SFT
+        var a12i = (this.bankSel & MMC3_BANKSEL_CHRA12INV) != 0
         var bankSel = 0
         switch(bank){
             case MMC3_CHR_BANK_0: bankSel = a12i ? this.bankDat[2] : this.bankDat[0]; break
@@ -83,50 +130,8 @@ class MMC3 {
             case MMC3_CHR_BANK_6: bankSel = a12i ? this.bankDat[1] : this.bankDat[4]; break
             case MMC3_CHR_BANK_7: bankSel = a12i ? this.bankDat[1] : this.bankDat[5]; break
         }
-        return this.chrBank[bankSel>>>1][shft]
+        this.chrBank[bankSel][shft] = data
     }
-    PRGWrite(addr,data){
-        var bank = addr & MMC3_PRG_BANK_SEL
-        var even = (addr & 1) == 0
-
-        switch(bank){
-            case MMC3_PRG_BANK_0: //Bank select, Bank data
-            if(even){
-                this.bankSel = data
-            }else{
-                this.bankDat[this.bankSel & MMC3_BANKSEL_REGSELECT] = data
-            }
-            break
-            case MMC3_PRG_BANK_1: //Mirroring, PRG RAM protect
-            if(even){ if(!this.is4Scr) this.isHori = (data & 1) != 0 }
-            else    { }
-            break
-            case MMC3_PRG_BANK_2: //IRQ latch, IRQ reload
-            if(even){
-                this.irqLatch = data
-            }else{
-                
-            }
-            break
-            case MMC3_PRG_BANK_3: //IRQ disable, IRQ enable
-            if(even){
-                this.irqEnable = false
-            }else{
-                this.irqEnable = true
-            }
-            break
-        }
-    }
-
-    CHRWrite(addr,data){
-        
-        
-        
-        
-        
-        
-    }
-
     SRAMRead  (addr)      { return this.sram[addr] }
     SRAMWrite (addr,data) { this.sram[addr] = data }
     EXROMRead (addr)      { return 0               }

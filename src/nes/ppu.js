@@ -496,6 +496,8 @@ class PPU {
         if( cycle==256                 ) { this.incScrollY()                            }
         if( cycle==257                 ) { this.reloadBgShifter(); this.transferAddrX() }
 
+        if( cycle==260                 ) { if(this.mask.isRendering()) this.bus.scanlineSig() }
+
         if( cycle==321                 ) { this.fetchBuffer = this.fetchNTAddr()        }
         if((cycle>=322) && (cycle<=337)) { this.fetch((cycle - 321) % 0x08)             }
         if( cycle==338                 ) { this.fetchNT(this.fetchBuffer)               }

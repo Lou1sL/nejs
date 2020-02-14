@@ -23,8 +23,8 @@ class NES {
     //CPU: 29780 per frame
     step()        { for(var c=0;c<29780;c++) this.bus.clock() }
     reset()       { this.bus.resetAll()                       }
-    btnDown (btn) { this.bus.getPad().btnDown(btn)            }
-    btnUp   (btn) { this.bus.getPad().btnUp(btn)              }
+    btnDown (btn) { this.bus.pad.btnDown(btn)                 }
+    btnUp   (btn) { this.bus.pad.btnUp(btn)                   }
 
     setScaleMode(mode) { this.bus.getScr().setScaleMode(mode) }
 }
