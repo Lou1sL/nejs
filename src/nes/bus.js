@@ -406,6 +406,7 @@ class BUS {
     }
     connCPU       (cpu)  { this.cpu = cpu; this.cpu.bindBUS(this.cpubus) }
     connPPU       (ppu)  { this.ppu = ppu; this.ppu.bindBUS(this.ppubus) }
+    connAPU       (apu)  { this.apu = apu; this.apu.bindBUS(this.cpubus) }
     connPad       (pad)  { this.pad = pad;                               }
     connCartridge (cart) { this.cart = cart; this.cart.bindBUS(this)     }
     connScreen    (scr)  { this.scr = scr; this.ppu.bindScreen(this.scr) }

@@ -121,14 +121,14 @@ class MMC3 {
         var a12i = (this.bankSel & MMC3_BANKSEL_CHRA12INV) != 0
         var bankSel = 0
         switch(bank){
-            case MMC3_CHR_BANK_0: bankSel = a12i ? this.bankDat[2] : this.bankDat[0]; break
-            case MMC3_CHR_BANK_1: bankSel = a12i ? this.bankDat[3] : this.bankDat[0]; break
-            case MMC3_CHR_BANK_2: bankSel = a12i ? this.bankDat[4] : this.bankDat[1]; break
-            case MMC3_CHR_BANK_3: bankSel = a12i ? this.bankDat[5] : this.bankDat[1]; break
-            case MMC3_CHR_BANK_4: bankSel = a12i ? this.bankDat[0] : this.bankDat[2]; break
-            case MMC3_CHR_BANK_5: bankSel = a12i ? this.bankDat[0] : this.bankDat[3]; break
-            case MMC3_CHR_BANK_6: bankSel = a12i ? this.bankDat[1] : this.bankDat[4]; break
-            case MMC3_CHR_BANK_7: bankSel = a12i ? this.bankDat[1] : this.bankDat[5]; break
+            case MMC3_CHR_BANK_0: bankSel = a12i ? this.bankDat[2] : (this.bankDat[0] & 0xFE); break
+            case MMC3_CHR_BANK_1: bankSel = a12i ? this.bankDat[3] : (this.bankDat[0] |    1); break
+            case MMC3_CHR_BANK_2: bankSel = a12i ? this.bankDat[4] : (this.bankDat[1] & 0xFE); break
+            case MMC3_CHR_BANK_3: bankSel = a12i ? this.bankDat[5] : (this.bankDat[1] |    1); break
+            case MMC3_CHR_BANK_4: bankSel = a12i ? (this.bankDat[0] & 0xFE) : this.bankDat[2]; break
+            case MMC3_CHR_BANK_5: bankSel = a12i ? (this.bankDat[0] |    1) : this.bankDat[3]; break
+            case MMC3_CHR_BANK_6: bankSel = a12i ? (this.bankDat[1] & 0xFE) : this.bankDat[4]; break
+            case MMC3_CHR_BANK_7: bankSel = a12i ? (this.bankDat[1] |    1) : this.bankDat[5]; break
         }
         this.chrBank[bankSel][shft] = data
     }

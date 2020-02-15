@@ -11,6 +11,7 @@ class NES {
         this.bus = new BUS()
         this.bus.connCPU(new CPU())
         this.bus.connPPU(new PPU())
+        this.bus.connAPU(new APU())
         this.bus.connPad(new Joypad())
         this.bus.connScreen(new Screen(canvas))
     }
