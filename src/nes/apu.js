@@ -67,19 +67,78 @@ const STAT_LENG0_PUL1  = 0b00000001
 
 //Frame Counter    ------------------
 
-class Pulse {
-    constructor() { this.reg = new Uint8Array(4) }
-}
-class Triangle {
-    constructor() { this.reg = new Uint8Array(4) }
-}
-class Noise {
-    constructor() { this.reg = new Uint8Array(4) }
-}
-class DMC {
-    constructor() { this.reg = new Uint8Array(4) }
+class Channel {
+    constructor()      { this.reg = new Uint8Array(4) }
+    reset      ()      { this.reg = new Uint8Array(4) }
+    get        (i)     { return this.reg[i]           }
+    set        (i,val) { this.reg[i] = val & 0xFF     }
 }
 
+class Pulse extends Channel {
+    getDuty        () { return (this.reg[0] & PUL_DUTY) >>> 6 }
+    getEnvLoop     () { return (this.reg[0] & PUL_ENVL) >>> 5 }
+    getEnvDsbl     () { return (this.reg[0] & PUL_CNSV) >>> 4 }
+    getPeriod      () { return (this.reg[0] & PUL_VOLU) >>> 0 }
+
+    getSweepEnable () { return (this.reg[1] & PUL_SWEEP_ENABLE) >>> 7 }
+    getSweepPeriod () { return (this.reg[1] & PUL_SWEEP_PERIOD) >>> 4 }
+    getSweepNegate () { return (this.reg[1] & PUL_SWEEP_NEGATE) >>> 3 }
+    getSweepShift  () { return (this.reg[1] & PUL_SWEEP_SHIFT ) >>> 0 }
+
+    getTimerLow    () { return  this.reg[2] & PUL_TIMER_L         }
+
+    getLenCIndex   () { return (this.reg[3] & PUL_LC_LOAD) >>> 3  }
+    getTimerHigh   () { return  this.reg[3] & PUL_TIMER_H         }
+
+    getTimer       () { return (this.getTimerHigh() << 8) | this.getTimerLow() }
+}
+class Triangle extends Channel {
+    getLenCDsbl    () { return (this.reg[0] & TRI_LIC_CTRL) >>> 7 }
+    getLinC        () { return (this.reg[0] & TRI_LIC_LOAD) >>> 0 }
+
+    getTimerLow    () { return  this.reg[2] & TRI_TIMER_L         }
+
+    getLenCIndex   () { return (this.reg[3] & TRI_LC_LOAD) >>> 3  }
+    getTimerHigh   () { return  this.reg[3] & TRI_TIMER_H         }
+
+    getTimer       () { return (this.getTimerHigh() << 8) | this.getTimerLow() }
+}
+class Noise extends Channel {
+    getLenCDsbl    () { return (this.reg[0] &    NOI_ENVL) >>> 5 }
+    getEnvDsbl     () { return (this.reg[0] &    NOI_CNSV) >>> 4 }
+    getEnvPeriod   () { return (this.reg[0] &    NOI_VOLU) >>> 0 }
+
+    getRandom      () { return (this.reg[2] &    NOI_LOOP) >>> 7 }
+    getTimeIndex   () { return (this.reg[2] &  NOI_PERIOD) >>> 0 }
+
+    getLenCIndex   () { return (this.reg[3] & NOI_LC_LOAD) >>> 3 }
+}
+class DMC extends Channel {
+    getIRQEnable   () { return (this.reg[0] &  DMC_IRQ_ENABLE) >>> 7 }
+    getLoop        () { return (this.reg[0] &        DMC_LOOP) >>> 6 }
+    getTimeIndex   () { return (this.reg[0] &        DMC_FREQ) >>> 0 }
+
+    getDeltaC      () { return (this.reg[1] &          DMC_LC) >>> 0 }
+
+    getSampleAddr  () { return (this.reg[2] & DMC_SAMPLE_ADDR) >>> 0 }
+
+    getSampleLen   () { return (this.reg[3] &  DMC_SAMPLE_LEN) >>> 0 }
+
+}
+
+const AUDIO_BUFFER_LEN = 4096
+class Audio {
+    constructor(){
+        this.buffer = new Float32Array(AUDIO_BUFFER_LEN)
+        this.ctx    = new AudioContext()
+        this.sp     = this.ctx.createScriptProcessor(AUDIO_BUFFER_LEN, 0, 1)
+
+        this.sp.onaudioprocess = (e) => { }
+        this.sp.connect(this.ctx.destination)
+        
+    }
+
+}
 class APU {
     constructor(){
         this.pulse0   = new Pulse()
@@ -88,6 +147,7 @@ class APU {
         this.noise    = new Noise()
         this.dmc      = new DMC()
         
+        this.audio    = new Audio()
     }
     bindBUS(bus){ this.bus = bus }
 

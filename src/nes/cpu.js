@@ -17,84 +17,84 @@ const IRQ = 0xFFFE
 
 const STACK_SHIFT = 0x0100
 
-//http://6502.org/tutorials/65c02opcodes.html
+//http://nesdev.com/6502.txt
 const OPCODE = {
-    0x00 : { mnem:'BRK', addressing:'IMPL', cycle:7 }, 0x01 : { mnem:'ORA', addressing:'XIDR', cycle:6 },
-    0x05 : { mnem:'ORA', addressing:'0PAG', cycle:3 }, 0x06 : { mnem:'ASL', addressing:'0PAG', cycle:5 },
-    0x08 : { mnem:'PHP', addressing:'IMPL', cycle:3 }, 0x09 : { mnem:'ORA', addressing:'IMME', cycle:2 },
-    0x0A : { mnem:'ASL', addressing:'ACCU', cycle:2 }, 0x0D : { mnem:'ORA', addressing:'ABSO', cycle:4 },
-    0x0E : { mnem:'ASL', addressing:'ABSO', cycle:6 }, 0x10 : { mnem:'BPL', addressing:'RELA', cycle:2 },
-    0x11 : { mnem:'ORA', addressing:'IDRY', cycle:5 }, 0x15 : { mnem:'ORA', addressing:'0PGX', cycle:4 },
-    0x16 : { mnem:'ASL', addressing:'0PGX', cycle:6 }, 0x18 : { mnem:'CLC', addressing:'IMPL', cycle:2 },
-    0x19 : { mnem:'ORA', addressing:'ABSY', cycle:4 }, 0x1D : { mnem:'ORA', addressing:'ABSX', cycle:4 },
-    0x1E : { mnem:'ASL', addressing:'ABSX', cycle:7 }, 0x20 : { mnem:'JSR', addressing:'ABSO', cycle:6 },
-    0x21 : { mnem:'AND', addressing:'XIDR', cycle:6 }, 0x24 : { mnem:'BIT', addressing:'0PAG', cycle:3 },
-    0x25 : { mnem:'AND', addressing:'0PAG', cycle:3 }, 0x26 : { mnem:'ROL', addressing:'0PAG', cycle:5 },
-    0x28 : { mnem:'PLP', addressing:'IMPL', cycle:4 }, 0x29 : { mnem:'AND', addressing:'IMME', cycle:2 },
-    0x2A : { mnem:'ROL', addressing:'ACCU', cycle:2 }, 0x2C : { mnem:'BIT', addressing:'ABSO', cycle:4 },
-    0x2D : { mnem:'AND', addressing:'ABSO', cycle:4 }, 0x2E : { mnem:'ROL', addressing:'ABSO', cycle:6 },
-    0x30 : { mnem:'BMI', addressing:'RELA', cycle:2 }, 0x31 : { mnem:'AND', addressing:'IDRY', cycle:5 },
-    0x35 : { mnem:'AND', addressing:'0PGX', cycle:4 }, 0x36 : { mnem:'ROL', addressing:'0PGX', cycle:6 },
-    0x38 : { mnem:'SEC', addressing:'IMPL', cycle:2 }, 0x39 : { mnem:'AND', addressing:'ABSY', cycle:4 },
-    0x3D : { mnem:'AND', addressing:'ABSX', cycle:4 }, 0x3E : { mnem:'ROL', addressing:'ABSX', cycle:7 },
-    0x40 : { mnem:'RTI', addressing:'IMPL', cycle:6 }, 0x41 : { mnem:'EOR', addressing:'XIDR', cycle:6 },
-    0x45 : { mnem:'EOR', addressing:'0PAG', cycle:3 }, 0x46 : { mnem:'LSR', addressing:'0PAG', cycle:5 },
-    0x48 : { mnem:'PHA', addressing:'IMPL', cycle:3 }, 0x49 : { mnem:'EOR', addressing:'IMME', cycle:2 },
-    0x4A : { mnem:'LSR', addressing:'ACCU', cycle:2 }, 0x4C : { mnem:'JMP', addressing:'ABSO', cycle:3 },
-    0x4D : { mnem:'EOR', addressing:'ABSO', cycle:4 }, 0x4E : { mnem:'LSR', addressing:'ABSO', cycle:6 },
-    0x50 : { mnem:'BVC', addressing:'RELA', cycle:2 }, 0x51 : { mnem:'EOR', addressing:'IDRY', cycle:5 },
-    0x55 : { mnem:'EOR', addressing:'0PGX', cycle:4 }, 0x56 : { mnem:'LSR', addressing:'0PGX', cycle:6 },
-    0x58 : { mnem:'CLI', addressing:'IMPL', cycle:2 }, 0x59 : { mnem:'EOR', addressing:'ABSY', cycle:4 },
-    0x5D : { mnem:'EOR', addressing:'ABSX', cycle:4 }, 0x5E : { mnem:'LSR', addressing:'ABSX', cycle:6 },
-    0x60 : { mnem:'RTS', addressing:'IMPL', cycle:6 }, 0x61 : { mnem:'ADC', addressing:'XIDR', cycle:6 },
-    0x65 : { mnem:'ADC', addressing:'0PAG', cycle:3 }, 0x66 : { mnem:'ROR', addressing:'0PAG', cycle:5 },
-    0x68 : { mnem:'PLA', addressing:'IMPL', cycle:4 }, 0x69 : { mnem:'ADC', addressing:'IMME', cycle:2 },
-    0x6A : { mnem:'ROR', addressing:'ACCU', cycle:2 }, 0x6C : { mnem:'JMP', addressing:'IDIR', cycle:5 },
-    0x6D : { mnem:'ADC', addressing:'ABSO', cycle:4 }, 0x6E : { mnem:'ROR', addressing:'ABSO', cycle:6 },
-    0x70 : { mnem:'BVS', addressing:'RELA', cycle:2 }, 0x71 : { mnem:'ADC', addressing:'IDRY', cycle:5 },
-    0x75 : { mnem:'ADC', addressing:'0PGX', cycle:4 }, 0x76 : { mnem:'ROR', addressing:'0PGX', cycle:6 },
-    0x78 : { mnem:'SEI', addressing:'IMPL', cycle:2 }, 0x79 : { mnem:'ADC', addressing:'ABSY', cycle:4 },
-    0x7D : { mnem:'ADC', addressing:'ABSX', cycle:4 }, 0x7E : { mnem:'ROR', addressing:'ABSX', cycle:7 },
-    0x81 : { mnem:'STA', addressing:'XIDR', cycle:6 }, 0x84 : { mnem:'STY', addressing:'0PAG', cycle:3 },
-    0x85 : { mnem:'STA', addressing:'0PAG', cycle:3 }, 0x86 : { mnem:'STX', addressing:'0PAG', cycle:3 },
-    0x88 : { mnem:'DEY', addressing:'IMPL', cycle:2 }, 0x8A : { mnem:'TXA', addressing:'IMPL', cycle:2 },
-    0x8C : { mnem:'STY', addressing:'ABSO', cycle:4 }, 0x8D : { mnem:'STA', addressing:'ABSO', cycle:4 },
-    0x8E : { mnem:'STX', addressing:'ABSO', cycle:4 }, 0x90 : { mnem:'BCC', addressing:'RELA', cycle:2 },
-    0x91 : { mnem:'STA', addressing:'IDRY', cycle:6 }, 0x94 : { mnem:'STY', addressing:'0PGX', cycle:4 },
-    0x95 : { mnem:'STA', addressing:'0PGX', cycle:4 }, 0x96 : { mnem:'STX', addressing:'0PGY', cycle:4 },
-    0x98 : { mnem:'TYA', addressing:'IMPL', cycle:2 }, 0x99 : { mnem:'STA', addressing:'ABSY', cycle:5 },
-    0x9A : { mnem:'TXS', addressing:'IMPL', cycle:2 }, 0x9D : { mnem:'STA', addressing:'ABSX', cycle:5 },
-    0xA0 : { mnem:'LDY', addressing:'IMME', cycle:2 }, 0xA1 : { mnem:'LDA', addressing:'XIDR', cycle:6 },
-    0xA2 : { mnem:'LDX', addressing:'IMME', cycle:2 }, 0xA4 : { mnem:'LDY', addressing:'0PAG', cycle:3 },
-    0xA5 : { mnem:'LDA', addressing:'0PAG', cycle:3 }, 0xA6 : { mnem:'LDX', addressing:'0PAG', cycle:3 },
-    0xA8 : { mnem:'TAY', addressing:'IMPL', cycle:2 }, 0xA9 : { mnem:'LDA', addressing:'IMME', cycle:2 },
-    0xAA : { mnem:'TAX', addressing:'IMPL', cycle:2 }, 0xAC : { mnem:'LDY', addressing:'ABSO', cycle:4 },
-    0xAD : { mnem:'LDA', addressing:'ABSO', cycle:4 }, 0xAE : { mnem:'LDX', addressing:'ABSO', cycle:4 },
-    0xB0 : { mnem:'BCS', addressing:'RELA', cycle:2 }, 0xB1 : { mnem:'LDA', addressing:'IDRY', cycle:5 },
-    0xB4 : { mnem:'LDY', addressing:'0PGX', cycle:4 }, 0xB5 : { mnem:'LDA', addressing:'0PGX', cycle:4 },
-    0xB6 : { mnem:'LDX', addressing:'0PGY', cycle:4 }, 0xB8 : { mnem:'CLV', addressing:'IMPL', cycle:2 },
-    0xB9 : { mnem:'LDA', addressing:'ABSY', cycle:4 }, 0xBA : { mnem:'TSX', addressing:'IMPL', cycle:2 },
-    0xBC : { mnem:'LDY', addressing:'ABSX', cycle:4 }, 0xBD : { mnem:'LDA', addressing:'ABSX', cycle:4 },
-    0xBE : { mnem:'LDX', addressing:'ABSY', cycle:4 }, 0xC0 : { mnem:'CPY', addressing:'IMME', cycle:2 },
-    0xC1 : { mnem:'CMP', addressing:'XIDR', cycle:6 }, 0xC4 : { mnem:'CPY', addressing:'0PAG', cycle:3 },
-    0xC5 : { mnem:'CMP', addressing:'0PAG', cycle:3 }, 0xC6 : { mnem:'DEC', addressing:'0PAG', cycle:5 },
-    0xC8 : { mnem:'INY', addressing:'IMPL', cycle:2 }, 0xC9 : { mnem:'CMP', addressing:'IMME', cycle:2 },
-    0xCA : { mnem:'DEX', addressing:'IMPL', cycle:2 }, 0xCC : { mnem:'CPY', addressing:'ABSO', cycle:4 },
-    0xCD : { mnem:'CMP', addressing:'ABSO', cycle:4 }, 0xCE : { mnem:'DEC', addressing:'ABSO', cycle:6 },
-    0xD0 : { mnem:'BNE', addressing:'RELA', cycle:2 }, 0xD1 : { mnem:'CMP', addressing:'IDRY', cycle:5 },
-    0xD5 : { mnem:'CMP', addressing:'0PGX', cycle:4 }, 0xD6 : { mnem:'DEC', addressing:'0PGX', cycle:6 },
-    0xD8 : { mnem:'CLD', addressing:'IMPL', cycle:2 }, 0xD9 : { mnem:'CMP', addressing:'ABSY', cycle:4 },
-    0xDD : { mnem:'CMP', addressing:'ABSX', cycle:4 }, 0xDE : { mnem:'DEC', addressing:'ABSX', cycle:7 },
-    0xE0 : { mnem:'CPX', addressing:'IMME', cycle:2 }, 0xE1 : { mnem:'SBC', addressing:'XIDR', cycle:6 },
-    0xE4 : { mnem:'CPX', addressing:'0PAG', cycle:3 }, 0xE5 : { mnem:'SBC', addressing:'0PAG', cycle:3 },
-    0xE6 : { mnem:'INC', addressing:'0PAG', cycle:5 }, 0xE8 : { mnem:'INX', addressing:'IMPL', cycle:2 },
-    0xE9 : { mnem:'SBC', addressing:'IMME', cycle:2 }, 0xEA : { mnem:'NOP', addressing:'IMPL', cycle:2 },
-    0xEC : { mnem:'CPX', addressing:'ABSO', cycle:4 }, 0xED : { mnem:'SBC', addressing:'ABSO', cycle:4 },
-    0xEE : { mnem:'INC', addressing:'ABSO', cycle:6 }, 0xF0 : { mnem:'BEQ', addressing:'RELA', cycle:2 },
-    0xF1 : { mnem:'SBC', addressing:'IDRY', cycle:5 }, 0xF5 : { mnem:'SBC', addressing:'0PGX', cycle:4 },
-    0xF6 : { mnem:'INC', addressing:'0PGX', cycle:6 }, 0xF8 : { mnem:'SED', addressing:'IMPL', cycle:2 },
-    0xF9 : { mnem:'SBC', addressing:'ABSY', cycle:4 }, 0xFD : { mnem:'SBC', addressing:'ABSX', cycle:4 },
-    0xFE : { mnem:'INC', addressing:'ABSX', cycle:7 },
+    0x00 : { mnem:'BRK', addressing:'IMPL', cycle:7, xpgcyc:false }, 0x01 : { mnem:'ORA', addressing:'XIDR', cycle:6, xpgcyc:false },
+    0x05 : { mnem:'ORA', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x06 : { mnem:'ASL', addressing:'0PAG', cycle:5, xpgcyc:false },
+    0x08 : { mnem:'PHP', addressing:'IMPL', cycle:3, xpgcyc:false }, 0x09 : { mnem:'ORA', addressing:'IMME', cycle:2, xpgcyc:false },
+    0x0A : { mnem:'ASL', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x0D : { mnem:'ORA', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0x0E : { mnem:'ASL', addressing:'ABSO', cycle:6, xpgcyc:false }, 0x10 : { mnem:'BPL', addressing:'RELA', cycle:2, xpgcyc:true  },
+    0x11 : { mnem:'ORA', addressing:'IDRY', cycle:5, xpgcyc:true  }, 0x15 : { mnem:'ORA', addressing:'0PGX', cycle:4, xpgcyc:false },
+    0x16 : { mnem:'ASL', addressing:'0PGX', cycle:6, xpgcyc:false }, 0x18 : { mnem:'CLC', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0x19 : { mnem:'ORA', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0x1D : { mnem:'ORA', addressing:'ABSX', cycle:4, xpgcyc:true  },
+    0x1E : { mnem:'ASL', addressing:'ABSX', cycle:7, xpgcyc:false }, 0x20 : { mnem:'JSR', addressing:'ABSO', cycle:6, xpgcyc:false },
+    0x21 : { mnem:'AND', addressing:'XIDR', cycle:6, xpgcyc:false }, 0x24 : { mnem:'BIT', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0x25 : { mnem:'AND', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x26 : { mnem:'ROL', addressing:'0PAG', cycle:5, xpgcyc:false },
+    0x28 : { mnem:'PLP', addressing:'IMPL', cycle:4, xpgcyc:false }, 0x29 : { mnem:'AND', addressing:'IMME', cycle:2, xpgcyc:false },
+    0x2A : { mnem:'ROL', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x2C : { mnem:'BIT', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0x2D : { mnem:'AND', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x2E : { mnem:'ROL', addressing:'ABSO', cycle:6, xpgcyc:false },
+    0x30 : { mnem:'BMI', addressing:'RELA', cycle:2, xpgcyc:true  }, 0x31 : { mnem:'AND', addressing:'IDRY', cycle:5, xpgcyc:true  },
+    0x35 : { mnem:'AND', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x36 : { mnem:'ROL', addressing:'0PGX', cycle:6, xpgcyc:false },
+    0x38 : { mnem:'SEC', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x39 : { mnem:'AND', addressing:'ABSY', cycle:4, xpgcyc:true  },
+    0x3D : { mnem:'AND', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0x3E : { mnem:'ROL', addressing:'ABSX', cycle:7, xpgcyc:false },
+    0x40 : { mnem:'RTI', addressing:'IMPL', cycle:6, xpgcyc:false }, 0x41 : { mnem:'EOR', addressing:'XIDR', cycle:6, xpgcyc:false },
+    0x45 : { mnem:'EOR', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x46 : { mnem:'LSR', addressing:'0PAG', cycle:5, xpgcyc:false },
+    0x48 : { mnem:'PHA', addressing:'IMPL', cycle:3, xpgcyc:false }, 0x49 : { mnem:'EOR', addressing:'IMME', cycle:2, xpgcyc:false },
+    0x4A : { mnem:'LSR', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x4C : { mnem:'JMP', addressing:'ABSO', cycle:3, xpgcyc:false },
+    0x4D : { mnem:'EOR', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x4E : { mnem:'LSR', addressing:'ABSO', cycle:6, xpgcyc:false },
+    0x50 : { mnem:'BVC', addressing:'RELA', cycle:2, xpgcyc:true  }, 0x51 : { mnem:'EOR', addressing:'IDRY', cycle:5, xpgcyc:true  },
+    0x55 : { mnem:'EOR', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x56 : { mnem:'LSR', addressing:'0PGX', cycle:6, xpgcyc:false },
+    0x58 : { mnem:'CLI', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x59 : { mnem:'EOR', addressing:'ABSY', cycle:4, xpgcyc:true  },
+    0x5D : { mnem:'EOR', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0x5E : { mnem:'LSR', addressing:'ABSX', cycle:7, xpgcyc:false },
+    0x60 : { mnem:'RTS', addressing:'IMPL', cycle:6, xpgcyc:false }, 0x61 : { mnem:'ADC', addressing:'XIDR', cycle:6, xpgcyc:false },
+    0x65 : { mnem:'ADC', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x66 : { mnem:'ROR', addressing:'0PAG', cycle:5, xpgcyc:false },
+    0x68 : { mnem:'PLA', addressing:'IMPL', cycle:4, xpgcyc:false }, 0x69 : { mnem:'ADC', addressing:'IMME', cycle:2, xpgcyc:false },
+    0x6A : { mnem:'ROR', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x6C : { mnem:'JMP', addressing:'IDIR', cycle:5, xpgcyc:false },
+    0x6D : { mnem:'ADC', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x6E : { mnem:'ROR', addressing:'ABSO', cycle:6, xpgcyc:false },
+    0x70 : { mnem:'BVS', addressing:'RELA', cycle:2, xpgcyc:true  }, 0x71 : { mnem:'ADC', addressing:'IDRY', cycle:5, xpgcyc:true  },
+    0x75 : { mnem:'ADC', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x76 : { mnem:'ROR', addressing:'0PGX', cycle:6, xpgcyc:false },
+    0x78 : { mnem:'SEI', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x79 : { mnem:'ADC', addressing:'ABSY', cycle:4, xpgcyc:true  },
+    0x7D : { mnem:'ADC', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0x7E : { mnem:'ROR', addressing:'ABSX', cycle:7, xpgcyc:false },
+    0x81 : { mnem:'STA', addressing:'XIDR', cycle:6, xpgcyc:false }, 0x84 : { mnem:'STY', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0x85 : { mnem:'STA', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x86 : { mnem:'STX', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0x88 : { mnem:'DEY', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x8A : { mnem:'TXA', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0x8C : { mnem:'STY', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x8D : { mnem:'STA', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0x8E : { mnem:'STX', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x90 : { mnem:'BCC', addressing:'RELA', cycle:2, xpgcyc:true  },
+    0x91 : { mnem:'STA', addressing:'IDRY', cycle:6, xpgcyc:false }, 0x94 : { mnem:'STY', addressing:'0PGX', cycle:4, xpgcyc:false },
+    0x95 : { mnem:'STA', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x96 : { mnem:'STX', addressing:'0PGY', cycle:4, xpgcyc:false },
+    0x98 : { mnem:'TYA', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x99 : { mnem:'STA', addressing:'ABSY', cycle:5, xpgcyc:false },
+    0x9A : { mnem:'TXS', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x9D : { mnem:'STA', addressing:'ABSX', cycle:5, xpgcyc:false },
+    0xA0 : { mnem:'LDY', addressing:'IMME', cycle:2, xpgcyc:false }, 0xA1 : { mnem:'LDA', addressing:'XIDR', cycle:6, xpgcyc:false },
+    0xA2 : { mnem:'LDX', addressing:'IMME', cycle:2, xpgcyc:false }, 0xA4 : { mnem:'LDY', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0xA5 : { mnem:'LDA', addressing:'0PAG', cycle:3, xpgcyc:false }, 0xA6 : { mnem:'LDX', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0xA8 : { mnem:'TAY', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xA9 : { mnem:'LDA', addressing:'IMME', cycle:2, xpgcyc:false },
+    0xAA : { mnem:'TAX', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xAC : { mnem:'LDY', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0xAD : { mnem:'LDA', addressing:'ABSO', cycle:4, xpgcyc:false }, 0xAE : { mnem:'LDX', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0xB0 : { mnem:'BCS', addressing:'RELA', cycle:2, xpgcyc:true  }, 0xB1 : { mnem:'LDA', addressing:'IDRY', cycle:5, xpgcyc:true  },
+    0xB4 : { mnem:'LDY', addressing:'0PGX', cycle:4, xpgcyc:false }, 0xB5 : { mnem:'LDA', addressing:'0PGX', cycle:4, xpgcyc:false },
+    0xB6 : { mnem:'LDX', addressing:'0PGY', cycle:4, xpgcyc:false }, 0xB8 : { mnem:'CLV', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0xB9 : { mnem:'LDA', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0xBA : { mnem:'TSX', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0xBC : { mnem:'LDY', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0xBD : { mnem:'LDA', addressing:'ABSX', cycle:4, xpgcyc:true  },
+    0xBE : { mnem:'LDX', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0xC0 : { mnem:'CPY', addressing:'IMME', cycle:2, xpgcyc:false },
+    0xC1 : { mnem:'CMP', addressing:'XIDR', cycle:6, xpgcyc:false }, 0xC4 : { mnem:'CPY', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0xC5 : { mnem:'CMP', addressing:'0PAG', cycle:3, xpgcyc:false }, 0xC6 : { mnem:'DEC', addressing:'0PAG', cycle:5, xpgcyc:false },
+    0xC8 : { mnem:'INY', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xC9 : { mnem:'CMP', addressing:'IMME', cycle:2, xpgcyc:false },
+    0xCA : { mnem:'DEX', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xCC : { mnem:'CPY', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0xCD : { mnem:'CMP', addressing:'ABSO', cycle:4, xpgcyc:false }, 0xCE : { mnem:'DEC', addressing:'ABSO', cycle:6, xpgcyc:false },
+    0xD0 : { mnem:'BNE', addressing:'RELA', cycle:2, xpgcyc:true  }, 0xD1 : { mnem:'CMP', addressing:'IDRY', cycle:5, xpgcyc:true  },
+    0xD5 : { mnem:'CMP', addressing:'0PGX', cycle:4, xpgcyc:false }, 0xD6 : { mnem:'DEC', addressing:'0PGX', cycle:6, xpgcyc:false },
+    0xD8 : { mnem:'CLD', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xD9 : { mnem:'CMP', addressing:'ABSY', cycle:4, xpgcyc:true  },
+    0xDD : { mnem:'CMP', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0xDE : { mnem:'DEC', addressing:'ABSX', cycle:7, xpgcyc:false },
+    0xE0 : { mnem:'CPX', addressing:'IMME', cycle:2, xpgcyc:false }, 0xE1 : { mnem:'SBC', addressing:'XIDR', cycle:6, xpgcyc:false },
+    0xE4 : { mnem:'CPX', addressing:'0PAG', cycle:3, xpgcyc:false }, 0xE5 : { mnem:'SBC', addressing:'0PAG', cycle:3, xpgcyc:false },
+    0xE6 : { mnem:'INC', addressing:'0PAG', cycle:5, xpgcyc:false }, 0xE8 : { mnem:'INX', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0xE9 : { mnem:'SBC', addressing:'IMME', cycle:2, xpgcyc:false }, 0xEA : { mnem:'NOP', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0xEC : { mnem:'CPX', addressing:'ABSO', cycle:4, xpgcyc:false }, 0xED : { mnem:'SBC', addressing:'ABSO', cycle:4, xpgcyc:false },
+    0xEE : { mnem:'INC', addressing:'ABSO', cycle:6, xpgcyc:false }, 0xF0 : { mnem:'BEQ', addressing:'RELA', cycle:2, xpgcyc:true  },
+    0xF1 : { mnem:'SBC', addressing:'IDRY', cycle:5, xpgcyc:true  }, 0xF5 : { mnem:'SBC', addressing:'0PGX', cycle:4, xpgcyc:false },
+    0xF6 : { mnem:'INC', addressing:'0PGX', cycle:6, xpgcyc:false }, 0xF8 : { mnem:'SED', addressing:'IMPL', cycle:2, xpgcyc:false },
+    0xF9 : { mnem:'SBC', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0xFD : { mnem:'SBC', addressing:'ABSX', cycle:4, xpgcyc:true  },
+    0xFE : { mnem:'INC', addressing:'ABSX', cycle:7, xpgcyc:false },
 }
 
 class CPU{
@@ -157,8 +157,8 @@ class CPU{
     srNZC(v,c) { this.srNZ(v); this.srC(c)                            }
     //V if the sign of both inputs is different from the sign of the result. (Anding with 0x80 extracts just the sign bit from the result.) 
     srV(oprand,oldacc,result){ this.sr = (((oldacc ^ result) & (oprand ^ result) & 0x80) != 0 ? this.sr | V : this.sr & ~V) }
-    //Page bound crossing detection
-    isXPage(o,n) { return ((o ^ n) & 0xFF00) != 0 }
+    //Cross page 1 cycle penalty
+    XPage(o,n) { this.cycleCounter += (((o ^ n) & 0xFF00) != 0) ? 1 : 0 }
 
     toSigned(val) { return val < 0x80 ? val : val - 0x0100 }
 
@@ -167,7 +167,8 @@ class CPU{
         var oldpc = this.getPC()
         var newpc = (oldpc + this.toSigned(this.busR(addr))) & 0xFFFF
         this.pc(newpc)
-        this.cycleCounter += this.isXPage(oldpc,newpc) ? 2 : 1
+        this.cycleCounter += 1
+        this.XPage(oldpc,newpc)
     }
 
     //Gets opcode data,counts PC,adds basic cycle
@@ -185,27 +186,30 @@ class CPU{
     addrZPX()    { var addr = (this.addrZP() + this.x) & 0xFF;                                 return addr }
     addrZPY()    { var addr = (this.addrZP() + this.y) & 0xFF;                                 return addr }
     addrABS()    { var addr = this.busR16(this.getPC());                                       return addr }
-    addrABSX()   { var from = this.addrABS(); var addr = (from + this.x) & 0xFFFF;             this.cycleCounter += this.isXPage(from,addr)?1:0; return addr }
-    addrABSY()   { var from = this.addrABS(); var addr = (from + this.y) & 0xFFFF;             this.cycleCounter += this.isXPage(from,addr)?1:0; return addr }
+    addrABSX(x)  { var from = this.addrABS(); var addr = (from + this.x) & 0xFFFF; if(x)this.XPage(from,addr); return addr }
+    addrABSY(x)  { var from = this.addrABS(); var addr = (from + this.y) & 0xFFFF; if(x)this.XPage(from,addr); return addr }
     addrINDIR()  { var addr = this.busR16(this.addrABS());                                     return addr }
     addrXINDIR() { var addr = this.busR16(this.addrZPX());                                     return addr }
-    addrINDIRY() { var from = this.busR16(this.addrZP()); var addr = (from + this.y) & 0xFFFF; this.cycleCounter += this.isXPage(from,addr)?1:0; return addr }
+    addrINDIRY(x){ var from = this.busR16(this.addrZP()); var addr = (from + this.y) & 0xFFFF; if(x)this.XPage(from,addr); return addr }
 
     fetchAddr(opcode) {
         var addressing = opcode['addressing']
+        //Some instructions don't suffer from cross page cycle penalties
+        var x = opcode['xpgcyc']
+        
              if(addressing == 'IMPL') { return null }
         else if(addressing == 'ACCU') { return null }
-        else if(addressing == 'IMME') { var d = this.addrIMME();   this.cc(1); return d }
-        else if(addressing == 'RELA') { var d = this.addrRELA();   this.cc(1); return d }
-        else if(addressing == '0PAG') { var d = this.addrZP();     this.cc(1); return d }
-        else if(addressing == 'ABSO') { var d = this.addrABS();    this.cc(2); return d }
-        else if(addressing == 'IDIR') { var d = this.addrINDIR();  this.cc(2); return d }
-        else if(addressing == '0PGX') { var d = this.addrZPX();    this.cc(1); return d }
-        else if(addressing == 'ABSX') { var d = this.addrABSX();   this.cc(2); return d }
-        else if(addressing == 'XIDR') { var d = this.addrXINDIR(); this.cc(1); return d }
-        else if(addressing == '0PGY') { var d = this.addrZPY();    this.cc(1); return d }
-        else if(addressing == 'ABSY') { var d = this.addrABSY();   this.cc(2); return d }
-        else if(addressing == 'IDRY') { var d = this.addrINDIRY(); this.cc(1); return d }
+        else if(addressing == 'IMME') { var d = this.addrIMME();    this.cc(1); return d }
+        else if(addressing == 'RELA') { var d = this.addrRELA();    this.cc(1); return d }
+        else if(addressing == '0PAG') { var d = this.addrZP();      this.cc(1); return d }
+        else if(addressing == 'ABSO') { var d = this.addrABS();     this.cc(2); return d }
+        else if(addressing == 'IDIR') { var d = this.addrINDIR();   this.cc(2); return d }
+        else if(addressing == '0PGX') { var d = this.addrZPX();     this.cc(1); return d }
+        else if(addressing == 'ABSX') { var d = this.addrABSX(x);   this.cc(2); return d }
+        else if(addressing == 'XIDR') { var d = this.addrXINDIR();  this.cc(1); return d }
+        else if(addressing == '0PGY') { var d = this.addrZPY();     this.cc(1); return d }
+        else if(addressing == 'ABSY') { var d = this.addrABSY(x);   this.cc(2); return d }
+        else if(addressing == 'IDRY') { var d = this.addrINDIRY(x); this.cc(1); return d }
         else { return null }
     } 
 
