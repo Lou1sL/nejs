@@ -68,24 +68,32 @@ const STAT_LENG0_PUL1  = 0b00000001
 //Frame Counter    ------------------
 
 class Pulse {
-
+    constructor() { this.reg = new Uint8Array(4) }
 }
 class Triangle {
-
+    constructor() { this.reg = new Uint8Array(4) }
 }
 class Noise {
-
+    constructor() { this.reg = new Uint8Array(4) }
 }
 class DMC {
-    
+    constructor() { this.reg = new Uint8Array(4) }
 }
 
 class APU {
     constructor(){
+        this.pulse0   = new Pulse()
+        this.pulse1   = new Pulse()
+        this.triangle = new Triangle()
+        this.noise    = new Noise()
+        this.dmc      = new DMC()
         
     }
     bindBUS(bus){ this.bus = bus }
 
+    clock(){
+        
+    }
 
 }
 

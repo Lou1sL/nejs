@@ -247,7 +247,28 @@ class CPUBUS {
             }
         }
         else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
-            //TODO APU
+            switch(addr){
+                case CPU_MEM_IO_APU_PU1A: return  this.mainBus.apu.pulse0.reg[0]  
+                case CPU_MEM_IO_APU_PU1B: return  this.mainBus.apu.pulse0.reg[1]  
+                case CPU_MEM_IO_APU_PU1C: return  this.mainBus.apu.pulse0.reg[2]  
+                case CPU_MEM_IO_APU_PU1D: return  this.mainBus.apu.pulse0.reg[3]  
+                case CPU_MEM_IO_APU_PU2A: return  this.mainBus.apu.pulse1.reg[0]  
+                case CPU_MEM_IO_APU_PU2B: return  this.mainBus.apu.pulse1.reg[1]  
+                case CPU_MEM_IO_APU_PU2C: return  this.mainBus.apu.pulse1.reg[2]  
+                case CPU_MEM_IO_APU_PU2D: return  this.mainBus.apu.pulse1.reg[3]  
+                case CPU_MEM_IO_APU_TRIA: return  this.mainBus.apu.triangle.reg[0]
+                case CPU_MEM_IO_APU_TRIB: return  this.mainBus.apu.triangle.reg[1]
+                case CPU_MEM_IO_APU_TRIC: return  this.mainBus.apu.triangle.reg[2]
+                case CPU_MEM_IO_APU_TRID: return  this.mainBus.apu.triangle.reg[3]
+                case CPU_MEM_IO_APU_NOIA: return  this.mainBus.apu.noise.reg[0]   
+                case CPU_MEM_IO_APU_NOIB: return  this.mainBus.apu.noise.reg[1]   
+                case CPU_MEM_IO_APU_NOIC: return  this.mainBus.apu.noise.reg[2]   
+                case CPU_MEM_IO_APU_NOID: return  this.mainBus.apu.noise.reg[3]   
+                case CPU_MEM_IO_APU_DMCA: return  this.mainBus.apu.dmc.reg[0]     
+                case CPU_MEM_IO_APU_DMCB: return  this.mainBus.apu.dmc.reg[1]     
+                case CPU_MEM_IO_APU_DMCC: return  this.mainBus.apu.dmc.reg[2]     
+                case CPU_MEM_IO_APU_DMCD: return  this.mainBus.apu.dmc.reg[3]     
+            }
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             return 0
@@ -294,7 +315,28 @@ class CPUBUS {
             }
         }
         else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
-            //TODO APU
+            switch(addr){
+                case CPU_MEM_IO_APU_PU1A: this.mainBus.apu.pulse0.reg[0]   = data; break
+                case CPU_MEM_IO_APU_PU1B: this.mainBus.apu.pulse0.reg[1]   = data; break
+                case CPU_MEM_IO_APU_PU1C: this.mainBus.apu.pulse0.reg[2]   = data; break
+                case CPU_MEM_IO_APU_PU1D: this.mainBus.apu.pulse0.reg[3]   = data; break
+                case CPU_MEM_IO_APU_PU2A: this.mainBus.apu.pulse1.reg[0]   = data; break
+                case CPU_MEM_IO_APU_PU2B: this.mainBus.apu.pulse1.reg[1]   = data; break
+                case CPU_MEM_IO_APU_PU2C: this.mainBus.apu.pulse1.reg[2]   = data; break
+                case CPU_MEM_IO_APU_PU2D: this.mainBus.apu.pulse1.reg[3]   = data; break
+                case CPU_MEM_IO_APU_TRIA: this.mainBus.apu.triangle.reg[0] = data; break
+                case CPU_MEM_IO_APU_TRIB: this.mainBus.apu.triangle.reg[1] = data; break
+                case CPU_MEM_IO_APU_TRIC: this.mainBus.apu.triangle.reg[2] = data; break
+                case CPU_MEM_IO_APU_TRID: this.mainBus.apu.triangle.reg[3] = data; break
+                case CPU_MEM_IO_APU_NOIA: this.mainBus.apu.noise.reg[0]    = data; break
+                case CPU_MEM_IO_APU_NOIB: this.mainBus.apu.noise.reg[1]    = data; break
+                case CPU_MEM_IO_APU_NOIC: this.mainBus.apu.noise.reg[2]    = data; break
+                case CPU_MEM_IO_APU_NOID: this.mainBus.apu.noise.reg[3]    = data; break
+                case CPU_MEM_IO_APU_DMCA: this.mainBus.apu.dmc.reg[0]      = data; break
+                case CPU_MEM_IO_APU_DMCB: this.mainBus.apu.dmc.reg[1]      = data; break
+                case CPU_MEM_IO_APU_DMCC: this.mainBus.apu.dmc.reg[2]      = data; break
+                case CPU_MEM_IO_APU_DMCD: this.mainBus.apu.dmc.reg[3]      = data; break
+            }
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             this.dma.trigger(data)
@@ -305,7 +347,7 @@ class CPUBUS {
         else if(addr==CPU_MEM_IO_PAD_PAD0){
             this.mainBus.pad.w(data)
         }
-        else if(addr==CPU_MEM_IO_PAD_PAD1){
+        else if(addr==CPU_MEM_IO_APU_FRAM){
             //TODO APU
         }
         else if((addr>=CPU_MEM_IO_TEST0) && (addr<=CPU_MEM_IO_TEST7)){
@@ -411,9 +453,22 @@ class BUS {
     connCartridge (cart) { this.cart = cart; this.cart.bindBUS(this)     }
     connScreen    (scr)  { this.scr = scr; this.ppu.bindScreen(this.scr) }
 
-    resetAll() { this.cpu.RST(); this.cpubus.dma.reset(); this.ppu.RST() }
+    resetAll(){ 
+        this.cpu.RST()
+        this.cpubus.dma.reset()
+        this.ppu.RST()
+    }
 
-    clock()    { this.ppu.clock(); this.ppu.clock(); this.ppu.clock(); if(!this.cpubus.dma.isOngoing())this.cpu.clock(); this.cpubus.dma.clock() }
+    clock(){
+        this.ppu.clock()
+        this.ppu.clock()
+        this.ppu.clock()
+        if(!this.cpubus.dma.isOngoing()){
+            this.cpu.clock()
+            this.apu.clock()
+        }
+        this.cpubus.dma.clock()
+    }
 }
 
 export default BUS
