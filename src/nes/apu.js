@@ -70,8 +70,8 @@ const STAT_LENG0_PUL1  = 0b00000001
 class Channel {
     constructor()      { this.reg = new Uint8Array(4) }
     reset      ()      { this.reg = new Uint8Array(4) }
-    get        (i)     { return this.reg[i]           }
-    set        (i,val) { this.reg[i] = val & 0xFF     }
+    r          (i)     { return this.reg[i]           }
+    w          (i,val) { this.reg[i] = val & 0xFF     }
 }
 
 class Pulse extends Channel {
@@ -126,15 +126,34 @@ class DMC extends Channel {
 
 }
 
-const AUDIO_BUFFER_LEN = 4096
+class Status {
+    constructor()    { this.value = 0x00       }
+    reset      ()    { this.value = 0x00       }
+    r          ()    { return this.value       }
+    w          (val) { this.value = val & 0xFF }
+}
+
+class FrameCounter {
+    constructor()    { this.value = 0x00       }
+    reset      ()    { this.value = 0x00       }
+    r          ()    { return this.value       }
+    w          (val) { this.value = val & 0xFF }
+}
+
 class Audio {
     constructor(){
-        this.buffer = new Float32Array(AUDIO_BUFFER_LEN)
-        this.ctx    = new AudioContext()
-        this.sp     = this.ctx.createScriptProcessor(AUDIO_BUFFER_LEN, 0, 1)
-
-        this.sp.onaudioprocess = (e) => { }
-        this.sp.connect(this.ctx.destination)
+        var ctx = new AudioContext()
+        var globalGain = ctx.createGain()
+        var osc = ctx.createOscillator()
+        var gain = ctx.createGain()
+        gain.gain.value = 0
+        var oscGain = ctx.createGain()
+        oscGain.gain.value = 0.25
+        osc.connect(gain)
+        gain.connect(oscGain)
+        oscGain.connect(globalGain)
+        
+        this.p0 = { osc, gain }
         
     }
 
@@ -146,13 +165,14 @@ class APU {
         this.triangle = new Triangle()
         this.noise    = new Noise()
         this.dmc      = new DMC()
-        
+        this.status   = new Status()
+        this.framec   = new FrameCounter()
         this.audio    = new Audio()
     }
     bindBUS(bus){ this.bus = bus }
 
     clock(){
-        
+        this.cycle++
     }
 
 }

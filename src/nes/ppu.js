@@ -516,7 +516,7 @@ class PPU {
         if(cycle >= 280 && cycle <= 304) this.transferAddrY()
         this.visibleScanline(cycle)
     }
-    //Sprite
+    //Sprite TODO:better?
     scanlineRender(){
         var cycle = this.pixelIter.getCycle()
         if(cycle == 340){

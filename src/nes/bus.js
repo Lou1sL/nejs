@@ -248,33 +248,33 @@ class CPUBUS {
         }
         else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
             switch(addr){
-                case CPU_MEM_IO_APU_PU1A: return  this.mainBus.apu.pulse0.reg[0]  
-                case CPU_MEM_IO_APU_PU1B: return  this.mainBus.apu.pulse0.reg[1]  
-                case CPU_MEM_IO_APU_PU1C: return  this.mainBus.apu.pulse0.reg[2]  
-                case CPU_MEM_IO_APU_PU1D: return  this.mainBus.apu.pulse0.reg[3]  
-                case CPU_MEM_IO_APU_PU2A: return  this.mainBus.apu.pulse1.reg[0]  
-                case CPU_MEM_IO_APU_PU2B: return  this.mainBus.apu.pulse1.reg[1]  
-                case CPU_MEM_IO_APU_PU2C: return  this.mainBus.apu.pulse1.reg[2]  
-                case CPU_MEM_IO_APU_PU2D: return  this.mainBus.apu.pulse1.reg[3]  
-                case CPU_MEM_IO_APU_TRIA: return  this.mainBus.apu.triangle.reg[0]
-                case CPU_MEM_IO_APU_TRIB: return  this.mainBus.apu.triangle.reg[1]
-                case CPU_MEM_IO_APU_TRIC: return  this.mainBus.apu.triangle.reg[2]
-                case CPU_MEM_IO_APU_TRID: return  this.mainBus.apu.triangle.reg[3]
-                case CPU_MEM_IO_APU_NOIA: return  this.mainBus.apu.noise.reg[0]   
-                case CPU_MEM_IO_APU_NOIB: return  this.mainBus.apu.noise.reg[1]   
-                case CPU_MEM_IO_APU_NOIC: return  this.mainBus.apu.noise.reg[2]   
-                case CPU_MEM_IO_APU_NOID: return  this.mainBus.apu.noise.reg[3]   
-                case CPU_MEM_IO_APU_DMCA: return  this.mainBus.apu.dmc.reg[0]     
-                case CPU_MEM_IO_APU_DMCB: return  this.mainBus.apu.dmc.reg[1]     
-                case CPU_MEM_IO_APU_DMCC: return  this.mainBus.apu.dmc.reg[2]     
-                case CPU_MEM_IO_APU_DMCD: return  this.mainBus.apu.dmc.reg[3]     
+                case CPU_MEM_IO_APU_PU1A: return this.mainBus.apu.pulse0.r(0)
+                case CPU_MEM_IO_APU_PU1B: return this.mainBus.apu.pulse0.r(1)
+                case CPU_MEM_IO_APU_PU1C: return this.mainBus.apu.pulse0.r(2)
+                case CPU_MEM_IO_APU_PU1D: return this.mainBus.apu.pulse0.r(3)
+                case CPU_MEM_IO_APU_PU2A: return this.mainBus.apu.pulse1.r(0)
+                case CPU_MEM_IO_APU_PU2B: return this.mainBus.apu.pulse1.r(1)
+                case CPU_MEM_IO_APU_PU2C: return this.mainBus.apu.pulse1.r(2)
+                case CPU_MEM_IO_APU_PU2D: return this.mainBus.apu.pulse1.r(3)
+                case CPU_MEM_IO_APU_TRIA: return this.mainBus.apu.triangle.r(0)
+                case CPU_MEM_IO_APU_TRIB: return this.mainBus.apu.triangle.r(1)
+                case CPU_MEM_IO_APU_TRIC: return this.mainBus.apu.triangle.r(2)
+                case CPU_MEM_IO_APU_TRID: return this.mainBus.apu.triangle.r(3)
+                case CPU_MEM_IO_APU_NOIA: return this.mainBus.apu.noise.r(0)
+                case CPU_MEM_IO_APU_NOIB: return this.mainBus.apu.noise.r(1)
+                case CPU_MEM_IO_APU_NOIC: return this.mainBus.apu.noise.r(2)
+                case CPU_MEM_IO_APU_NOID: return this.mainBus.apu.noise.r(3)
+                case CPU_MEM_IO_APU_DMCA: return this.mainBus.apu.dmc.r(0)
+                case CPU_MEM_IO_APU_DMCB: return this.mainBus.apu.dmc.r(1)
+                case CPU_MEM_IO_APU_DMCC: return this.mainBus.apu.dmc.r(2)
+                case CPU_MEM_IO_APU_DMCD: return this.mainBus.apu.dmc.r(3)
             }
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             return 0
         }
         else if(addr==CPU_MEM_IO_APU_CTST){
-            //TODO APU
+            return this.mainBus.apu.status.r()
         }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
             return this.mainBus.pad.r0()
@@ -316,39 +316,39 @@ class CPUBUS {
         }
         else if((addr >= CPU_MEM_IO_APU_PU1A) && (addr <= CPU_MEM_IO_APU_DMCD)){
             switch(addr){
-                case CPU_MEM_IO_APU_PU1A: this.mainBus.apu.pulse0.reg[0]   = data; break
-                case CPU_MEM_IO_APU_PU1B: this.mainBus.apu.pulse0.reg[1]   = data; break
-                case CPU_MEM_IO_APU_PU1C: this.mainBus.apu.pulse0.reg[2]   = data; break
-                case CPU_MEM_IO_APU_PU1D: this.mainBus.apu.pulse0.reg[3]   = data; break
-                case CPU_MEM_IO_APU_PU2A: this.mainBus.apu.pulse1.reg[0]   = data; break
-                case CPU_MEM_IO_APU_PU2B: this.mainBus.apu.pulse1.reg[1]   = data; break
-                case CPU_MEM_IO_APU_PU2C: this.mainBus.apu.pulse1.reg[2]   = data; break
-                case CPU_MEM_IO_APU_PU2D: this.mainBus.apu.pulse1.reg[3]   = data; break
-                case CPU_MEM_IO_APU_TRIA: this.mainBus.apu.triangle.reg[0] = data; break
-                case CPU_MEM_IO_APU_TRIB: this.mainBus.apu.triangle.reg[1] = data; break
-                case CPU_MEM_IO_APU_TRIC: this.mainBus.apu.triangle.reg[2] = data; break
-                case CPU_MEM_IO_APU_TRID: this.mainBus.apu.triangle.reg[3] = data; break
-                case CPU_MEM_IO_APU_NOIA: this.mainBus.apu.noise.reg[0]    = data; break
-                case CPU_MEM_IO_APU_NOIB: this.mainBus.apu.noise.reg[1]    = data; break
-                case CPU_MEM_IO_APU_NOIC: this.mainBus.apu.noise.reg[2]    = data; break
-                case CPU_MEM_IO_APU_NOID: this.mainBus.apu.noise.reg[3]    = data; break
-                case CPU_MEM_IO_APU_DMCA: this.mainBus.apu.dmc.reg[0]      = data; break
-                case CPU_MEM_IO_APU_DMCB: this.mainBus.apu.dmc.reg[1]      = data; break
-                case CPU_MEM_IO_APU_DMCC: this.mainBus.apu.dmc.reg[2]      = data; break
-                case CPU_MEM_IO_APU_DMCD: this.mainBus.apu.dmc.reg[3]      = data; break
+                case CPU_MEM_IO_APU_PU1A: this.mainBus.apu.pulse0.w(0,data);   break
+                case CPU_MEM_IO_APU_PU1B: this.mainBus.apu.pulse0.w(1,data);   break
+                case CPU_MEM_IO_APU_PU1C: this.mainBus.apu.pulse0.w(2,data);   break
+                case CPU_MEM_IO_APU_PU1D: this.mainBus.apu.pulse0.w(3,data);   break
+                case CPU_MEM_IO_APU_PU2A: this.mainBus.apu.pulse1.w(0,data);   break
+                case CPU_MEM_IO_APU_PU2B: this.mainBus.apu.pulse1.w(1,data);   break
+                case CPU_MEM_IO_APU_PU2C: this.mainBus.apu.pulse1.w(2,data);   break
+                case CPU_MEM_IO_APU_PU2D: this.mainBus.apu.pulse1.w(3,data);   break
+                case CPU_MEM_IO_APU_TRIA: this.mainBus.apu.triangle.w(0,data); break
+                case CPU_MEM_IO_APU_TRIB: this.mainBus.apu.triangle.w(1,data); break
+                case CPU_MEM_IO_APU_TRIC: this.mainBus.apu.triangle.w(2,data); break
+                case CPU_MEM_IO_APU_TRID: this.mainBus.apu.triangle.w(3,data); break
+                case CPU_MEM_IO_APU_NOIA: this.mainBus.apu.noise.w(0,data);    break
+                case CPU_MEM_IO_APU_NOIB: this.mainBus.apu.noise.w(1,data);    break
+                case CPU_MEM_IO_APU_NOIC: this.mainBus.apu.noise.w(2,data);    break
+                case CPU_MEM_IO_APU_NOID: this.mainBus.apu.noise.w(3,data);    break
+                case CPU_MEM_IO_APU_DMCA: this.mainBus.apu.dmc.w(0,data);      break
+                case CPU_MEM_IO_APU_DMCB: this.mainBus.apu.dmc.w(1,data);      break
+                case CPU_MEM_IO_APU_DMCC: this.mainBus.apu.dmc.w(2,data);      break
+                case CPU_MEM_IO_APU_DMCD: this.mainBus.apu.dmc.w(3,data);      break
             }
         }
         else if(addr==CPU_MEM_IO_PPU_ODMA){
             this.dma.trigger(data)
         }
         else if(addr==CPU_MEM_IO_APU_CTST){
-            //TODO APU
+            this.mainBus.apu.status.w(data)
         }
         else if(addr==CPU_MEM_IO_PAD_PAD0){
             this.mainBus.pad.w(data)
         }
         else if(addr==CPU_MEM_IO_APU_FRAM){
-            //TODO APU
+            this.mainBus.apu.framec.w(data)
         }
         else if((addr>=CPU_MEM_IO_TEST0) && (addr<=CPU_MEM_IO_TEST7)){
             console.log('CPU_BUS_W: test address. @0x'+addr.toString(16))
