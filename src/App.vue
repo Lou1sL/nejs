@@ -124,6 +124,7 @@ export default {
         },
         reset(){
             this.nes.reset()
+            this.nes.bus.apu.audio.ctx.resume()
         },
      },
     computed: {  },
