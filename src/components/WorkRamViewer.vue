@@ -149,13 +149,13 @@ export default {
     }
     th{
         width: 30px;
-        font-size: 11px;
+        font-size: 12px;
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     }
     td{
         width: 12px;
-        font-size: 10px;
+        font-size: 12px;
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     }
@@ -178,7 +178,7 @@ export default {
         padding-left:1px;
         padding-bottom:2px;
         border: 1px solid rgb(83, 83, 83);
-        font-size: 10px;
+        font-size: 12px;
         -webkit-transition-duration: 0.2s;
         transition-duration: 0.2s;
     }
@@ -193,7 +193,7 @@ export default {
         color: white;
         padding:5px 10px;
         border: 1px solid rgb(83, 83, 83);
-        font-size: 10px;
+        font-size: 12px;
         font-weight: 100;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
@@ -210,7 +210,7 @@ export default {
         color: white;
         padding:5px 10px;
         border: 1px solid white;
-        font-size: 10px;
+        font-size: 12px;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }
@@ -231,7 +231,7 @@ export default {
         background-color:black;
         margin: 0px 5px;
         padding:5px 10px;
-        font-size: 10px;
+        font-size: 12px;
         background-color: rgb(24, 24, 24);
         border: 1px solid white;
     }

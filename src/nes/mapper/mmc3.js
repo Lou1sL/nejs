@@ -58,7 +58,7 @@ class MMC3 {
     scanlineSig ()    { 
         if(this.irqCounter == 0) this.irqCounter = this.irqLatch
         else this.irqCounter--
-        if(this.irqEnable && (this.irqCounter == 0))this.bus.cpu.IRQ()
+        if(this.irqEnable && (this.irqCounter == 0)) this.bus.cpu.IRQ()
     }
 
 

@@ -158,13 +158,13 @@ export default {
     }
     th{
         width: 30px;
-        font-size: 11px;
+        font-size: 12px;
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     }
     td{
         width: 12px;
-        font-size: 10px;
+        font-size: 12px;
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     }
@@ -177,7 +177,7 @@ export default {
         padding:5px 10px;
         border: 2px solid white;
         font-family:sans-serif;
-        font-size: 10px;
+        font-size: 12px;
         -webkit-transition-duration: 0.4s;
         transition-duration: 0.4s;
     }

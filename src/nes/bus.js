@@ -457,6 +457,7 @@ class BUS {
         this.cpu.RST()
         this.cpubus.dma.reset()
         this.ppu.RST()
+        this.apu.RST()
     }
 
     clock(){

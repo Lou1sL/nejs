@@ -84,6 +84,24 @@ const PULSE_DUTY_TABLE = [
     [1, 0, 0, 1, 1, 1, 1, 1],
 ]
 
+const SEQUENCE_TABLE = [
+    15, 14, 13, 12, 11, 10,  9,  8,
+     7,  6,  5,  4,  3,  2,  1,  0,
+     0,  1,  2,  3,  4,  5,  6,  7,
+     8,  9, 10, 11, 12, 13, 14, 15
+]
+const TIMER_TABLE = [
+    0x004, 0x008, 0x010, 0x020,
+    0x040, 0x060, 0x080, 0x0A0,
+    0x0CA, 0x0FE, 0x17C, 0x1FC,
+    0x2FA, 0x3F8, 0x7F2, 0xFE4
+]
+const DMC_TIMER_TABLE = [
+    0x1AC, 0x17C, 0x154, 0x140,
+    0x11E, 0x0FE, 0x0E2, 0x0D6,
+    0x0BE, 0x0A0, 0x08E, 0x080,
+    0x06A, 0x054, 0x048, 0x036
+  ]
 class Pulse {
     constructor(){
         this.reg = new Uint8Array(4)
@@ -200,11 +218,15 @@ class Pulse {
 
 }
 class Triangle {
-    constructor()      { this.reg = new Uint8Array(4) }
-    reset      ()      { this.reg = new Uint8Array(4) }
-    r          (i)     { return this.reg[i]           }
-    w          (i,val) { this.reg[i] = val & 0xFF     }
-
+    constructor(){
+        this.reg = new Uint8Array(4)
+        this.enabled = false
+        this.timerCounter = 0
+        this.timerSequence = 0
+        this.lengthCounter = 0
+        this.linearReloadFlag = false
+        this.linearCounter = 0
+    }
     getLenCDsbl    () { return (this.reg[0] & TRI_LIC_CTRL) >>> 7 }
     getLinC        () { return (this.reg[0] & TRI_LIC_LOAD) >>> 0 }
 
@@ -215,14 +237,68 @@ class Triangle {
 
     getTimer       () { return (this.getTimerHigh() << 8) | this.getTimerLow() }
 
-    output () { return 0 }
+
+    setEnable(val) { 
+        this.enabled = val
+        if(val === false) this.lengthCounter = 0
+    }
+    r(i){ return this.reg[i] }
+    w(i,val){
+        this.reg[i] = val & 0xFF
+        switch(i){
+            case 0:
+                this.reg[0] = val
+                break
+            case 1: 
+                this.reg[1] = val
+                break
+            case 2: 
+                this.reg[2] = val
+                break
+            case 3:
+                this.reg[3] = val
+                if(this.enabled) this.lengthCounter = LENGTH_TABLE[this.getLenCIndex()]
+                this.timerSequence = 0
+                this.envelopeStartFlag = true
+                break
+        }
+    }
+    driveTimer() {
+        if(this.timerCounter > 0) this.timerCounter--
+        else{
+            this.timerCounter = this.getTimer()
+            if(this.lengthCounter > 0 && this.linearCounter > 0){
+                this.timerSequence++
+                if(this.timerSequence === 32) this.timerSequence = 0
+            }
+        }
+    }
+    driveLinear() {
+        if(this.linearReloadFlag === true) this.linearCounter = this.getLinC()
+        else if(this.linearCounter > 0) this.linearCounter--
+        if(this.getLenCDsbl() === 0) this.linearReloadFlag = false
+    }
+    driveLength() {
+        if(this.getLenCDsbl() === 0 && this.lengthCounter > 0) this.lengthCounter--
+    }
+    output() {
+        if(this.enabled === false || this.lengthCounter === 0 ||
+            this.linearCounter === 0 || this.getTimer() < 2) return 0
+        return SEQUENCE_TABLE[this.timerSequence] & 0xF
+    }
 }
 class Noise {
-    constructor()      { this.reg = new Uint8Array(4) }
-    reset      ()      { this.reg = new Uint8Array(4) }
-    r          (i)     { return this.reg[i]           }
-    w          (i,val) { this.reg[i] = val & 0xFF     }
-
+    constructor(){
+        this.reg = new Uint8Array(4)
+        this.enabled = false
+        this.timerCounter = 0
+        this.timerPeriod = 0
+        this.envelopeStartFlag = false
+        this.envelopeCounter = 0
+        this.envelopeDecayLevelCounter = 0
+        this.lengthCounter = 0
+        this.shiftRegister = 1
+    }
     getLenCDsbl    () { return (this.reg[0] &    NOI_ENVL) >>> 5 }
     getEnvDsbl     () { return (this.reg[0] &    NOI_CNSV) >>> 4 }
     getEnvPeriod   () { return (this.reg[0] &    NOI_VOLU) >>> 0 }
@@ -232,13 +308,78 @@ class Noise {
 
     getLenCIndex   () { return (this.reg[3] & NOI_LC_LOAD) >>> 3 }
 
-    output () { return 0 }
+
+    setEnable(val) { 
+        this.enabled = val
+        if(val === false) this.lengthCounter = 0
+    }
+    r(i){ return this.reg[i] }
+    w(i,val) {
+        this.reg[i] = val & 0xFF
+        switch(i){
+            case 0:
+                this.reg[0] = val
+                break
+            case 1: 
+                this.reg[1] = val
+                break
+            case 2: 
+                this.reg[2] = val
+                this.timerPeriod = TIMER_TABLE[this.getTimeIndex()]
+                break
+            case 3:
+                this.reg[3] = val
+                if(this.enabled) this.lengthCounter = LENGTH_TABLE[this.getLenCIndex()]
+                this.envelopeStartFlag = true
+                break
+        }
+    }
+    driveTimer() {
+        if(this.timerCounter > 0) this.timerCounter--
+        else {
+            this.timerCounter = this.timerPeriod
+            var feedback = (this.shiftRegister & 1) ^ ((this.shiftRegister >> (this.getRandom() === 1 ? 6 : 1)) & 1)
+            this.shiftRegister = (feedback << 14) | (this.shiftRegister >> 1)
+        }
+    }
+    driveEnvelope() {
+        if(this.envelopeStartFlag === true) {
+            this.envelopeCounter = this.getEnvPeriod()
+            this.envelopeDecayLevelCounter = 0xF
+            this.envelopeStartFlag = false
+            return
+        }
+        if(this.envelopeCounter > 0) this.envelopeCounter--
+        else {
+            this.envelopeCounter = this.getEnvPeriod()
+            if(this.envelopeDecayLevelCounter > 0) this.envelopeDecayLevelCounter--
+            else if(this.envelopeDecayLevelCounter === 0 && this.getLenCDsbl() === 1) this.envelopeDecayLevelCounter = 0xF
+        }
+    }
+    driveLength() {
+        if(this.getLenCDsbl() === 0 && this.lengthCounter > 0) this.lengthCounter--
+    }
+    output() {
+        if(this.lengthCounter === 0 || (this.shiftRegister & 1) === 1) return 0
+        return (this.getEnvDsbl() === 1 ? this.getEnvPeriod() : this.envelopeDecayLevelCounter) & 0xF
+    }
 }
 class DMC {
-    constructor()      { this.reg = new Uint8Array(4) }
-    reset      ()      { this.reg = new Uint8Array(4) }
-    r          (i)     { return this.reg[i]           }
-    w          (i,val) { this.reg[i] = val & 0xFF     }
+    constructor(apu){
+        this.apu = apu
+        this.reg = new Uint8Array(4)
+        this.enabled = false
+        this.timerPeriod = 0
+        this.timerCounter = 0
+        this.deltaCounter = 0
+        this.addressCounter = 0
+        this.remainingBytesCounter = 0
+        this.sampleBuffer = 0
+        this.sampleBufferIsEmpty = true
+        this.shiftRegister = 0
+        this.remainingBitsCounter = 0
+        this.silenceFlag = true
+    }
 
     getIRQEnable   () { return (this.reg[0] &  DMC_IRQ_ENABLE) >>> 7 }
     getLoop        () { return (this.reg[0] &        DMC_LOOP) >>> 6 }
@@ -250,7 +391,80 @@ class DMC {
 
     getSampleLen   () { return (this.reg[3] &  DMC_SAMPLE_LEN) >>> 0 }
 
-    output () { return 0 }
+    r(i){ return this.reg[i] }
+    w(i,val) {
+        this.reg[i] = val & 0xFF
+        switch(i){
+            case 0:
+                this.reg[0] = val
+                this.timerPeriod = DMC_TIMER_TABLE[this.getTimeIndex()] >>> 1
+                break
+            case 1: 
+                this.reg[1] = val
+                this.start()
+                break
+            case 2: 
+                this.reg[2] = val
+                this.start()
+                break
+            case 3:
+                this.reg[3] = val
+                this.start()
+                break
+        }
+    }
+    setEnable(enabled) {
+        this.enabled = enabled
+        if(enabled === true) {
+            if(this.remainingBytesCounter === 0) this.start()
+        } else {
+            this.remainingBytesCounter = 0
+        }
+    }
+    start() {
+        this.deltaCounter = this.getDeltaC()
+        this.addressCounter = this.getSampleAddr() * 0x40 + 0xC000
+        this.remainingBytesCounter = this.getSampleLen() * 0x10 + 1
+    }
+    driveTimer() {
+        if(this.timerCounter > 0) this.timerCounter--
+        else {
+            this.timerCounter = this.timerPeriod
+            if(this.remainingBytesCounter > 0 && this.sampleBufferIsEmpty === true) {
+                this.sampleBuffer = this.apu.bus.cpubus.r(this.addressCounter++)
+                this.sampleBufferIsEmpty = false
+                if(this.addressCounter > 0xFFFF) this.addressCounter = 0x8000
+                this.remainingBytesCounter--
+                if(this.remainingBytesCounter === 0) {
+                    if(this.getLoop() === 1) this.start()
+                    else if(this.getIRQEnable() === 1) this.apu.dmcIrqActive = true
+                }
+                this.apu.bus.cpu.cycleCounter += 4
+            }
+            if(this.remainingBitsCounter === 0) {
+                this.remainingBitsCounter = 8
+                if(this.sampleBufferIsEmpty === true) {
+                    this.silenceFlag = true
+                } else {
+                    this.silenceFlag = false
+                    this.sampleBufferIsEmpty = true
+                    this.shiftRegister = this.sampleBuffer
+                    this.sampleBuffer = 0
+                }
+            }
+            if(this.silenceFlag === false) {
+                if((this.shiftRegister & 1) === 0) 
+                    if(this.deltaCounter > 1) this.deltaCounter -= 2
+                else if(this.deltaCounter < 126) this.deltaCounter += 2
+            }
+            this.shiftRegister = this.shiftRegister >> 1
+            this.remainingBitsCounter--
+        }
+    }
+    output(){
+        if(this.silenceFlag === true) return 0
+        return this.deltaCounter & 0x7F
+    }
 }
 
 class Status {
@@ -259,18 +473,18 @@ class Status {
         var val = 0
         val |= (this.apu.dmcIrqActive === true ? 1 : 0) << 7
         val |= (this.apu.frameIrqActive === true && this.apu.framec.getIRQDsbl() === 0 ? 1 : 0) << 6
-        //val |= (this.apu.dmc.remainingBytes > 0 ? 1 : 0) << 4
-        //val |= (this.apu.noise.lengthCounter > 0 ? 1 : 0) << 3
-        //val |= (this.apu.triangle.lengthCounter > 0 ? 1 : 0) << 2
+        val |= (this.apu.dmc.remainingBytes > 0 ? 1 : 0) << 4
+        val |= (this.apu.noise.lengthCounter > 0 ? 1 : 0) << 3
+        val |= (this.apu.triangle.lengthCounter > 0 ? 1 : 0) << 2
         val |= (this.apu.pulse1.lengthCounter > 0 ? 1 : 0) << 1
         val |= (this.apu.pulse0.lengthCounter > 0 ? 1 : 0) << 0
         this.apu.frameIrqActive = false
         return val
     }
     w(val){
-        //this.apu.dmc.setEnable      ((val & 0x10) === 0x10)
-        //this.apu.noise.setEnable    ((val & 0x8 ) === 0x8 )
-        //this.apu.triangle.setEnable ((val & 0x4 ) === 0x4 )
+        this.apu.dmc.setEnable      ((val & 0x10) === 0x10)
+        this.apu.noise.setEnable    ((val & 0x8 ) === 0x8 )
+        this.apu.triangle.setEnable ((val & 0x4 ) === 0x4 )
         this.apu.pulse1.setEnable   ((val & 0x2 ) === 0x2 )
         this.apu.pulse0.setEnable   ((val & 0x1 ) === 0x1 )
         this.apu.frameIrqActive = false
@@ -299,6 +513,7 @@ class Audio {
         this.sp.connect(this.ctx.destination)
         this.sampleRate = this.ctx.sampleRate
     }
+    reset() { this.buffer = new Float32Array(this.bufferLength); this.bufferIndex = 0  }
     onAudioProcess(e) {
         var data = e.outputBuffer.getChannelData(0)
         for(var i = 0, il = this.bufferLength; i < il; i++) data[i] = this.buffer[i]
@@ -320,7 +535,7 @@ class APU {
         this.pulse1   = new Pulse()
         this.triangle = new Triangle()
         this.noise    = new Noise()
-        this.dmc      = new DMC()
+        this.dmc      = new DMC(this)
         this.status   = new Status(this)
         this.framec   = new FrameCounter(this)
         this.audio    = new Audio()
@@ -332,6 +547,8 @@ class APU {
         this.dmcIrqActive   = false
     }
     bindBUS(bus){ this.bus = bus }
+    RST(){ this.audio.reset()  }
+
     sample() {
         var pulse0 = this.pulse0.output()
         var pulse1 = this.pulse1.output()
@@ -347,47 +564,45 @@ class APU {
     
         this.audio.push(pulseOut + tndOut)
     }
-
-
     clock(){
         this.cycle++
         if((this.cycle % this.samplePeriod) === 0) this.sample()
         if((this.cycle % 2) === 0) {
             this.pulse0.driveTimer()
             this.pulse1.driveTimer()
-            //this.noise.driveTimer()
-            //this.dmc.driveTimer()
+            this.noise.driveTimer()
+            this.dmc.driveTimer()
         }
-        //this.triangle.driveTimer()
+        this.triangle.driveTimer()
         if((this.cycle % 7457) === 0) {
             if(this.framec.getMode5() === 1) {
                 if(this.step < 4) {
                     this.pulse0.driveEnvelope()
                     this.pulse1.driveEnvelope()
-                    //this.triangle.driveLinear()
-                    //this.noise.driveEnvelope()
+                    this.triangle.driveLinear()
+                    this.noise.driveEnvelope()
                 }
                 if(this.step === 0 || this.step === 2) {
                     this.pulse0.driveLength()
                     this.pulse0.driveSweep()
                     this.pulse1.driveLength()
                     this.pulse1.driveSweep()
-                    //this.triangle.driveLength()
-                    //this.noise.driveLength()
+                    this.triangle.driveLength()
+                    this.noise.driveLength()
                 }
                 this.step = (this.step + 1) % 5
             } else {
                 this.pulse0.driveEnvelope()
                 this.pulse1.driveEnvelope()
-                //this.triangle.driveLinear()
-                //this.noise.driveEnvelope()
+                this.triangle.driveLinear()
+                this.noise.driveEnvelope()
                 if(this.step === 1 || this.step === 3) {
                     this.pulse0.driveLength()
                     this.pulse0.driveSweep()
                     this.pulse1.driveLength()
                     this.pulse1.driveSweep()
-                    //this.triangle.driveLength()
-                    //this.noise.driveLength()
+                    this.triangle.driveLength()
+                    this.noise.driveLength()
                 }
                 if(this.step === 3 && this.framec.getIRQDsbl() === 0) this.frameIrqActive = true
                 //if(this.frameIrqActive === true && this.framec.getIRQDsbl() === 0) this.bus.cpu.IRQ()

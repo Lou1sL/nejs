@@ -195,7 +195,7 @@ export default {
     .key-table{
         text-align: center;
         width: 100%;
-        font-size: 10px;
+        font-size: 12px;
         background-color: rgb(140, 0, 0);
     }
     .key-tr{
@@ -212,7 +212,7 @@ export default {
         text-align: center;
         width: 100%;
         color: white;
-        font-size: 10px;
+        font-size: 12px;
         padding-top: 50px;
         padding-bottom: 10px;
     }
