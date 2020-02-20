@@ -10,17 +10,13 @@
             <div style="color:white;float:right;margin:2px 10px;font-size:10px;"><input class="toggle" type="checkbox" /> EPX</div>
             -->
             <h3 class="title"> NEjS </h3>
-            <div class="info"> A simple NES emulator written in JavaScript.</div>
-            <div class="info"> Running in browser completely.</div>
-            <div class="info"> Using EPX algorithm on screen scaling.</div>
-            <div class="info"> PS: No audio & only supports mapper 0&4 (NROM,MMC3) currently.</div>
-            <div class="info"> PSS: Idk why but firefox is slow and laggy, chrome is a lot better. :)</div>
+            <div class="info" style="margin-bottom:10px;"> A simple NES emulator written in JavaScript & runs in browser completely.</div>
             <a class="info" href="https://github.com/RyuBAI/nejs/">Github Repo</a> &nbsp;
             <a class="info" href="http://tuxnes.sourceforge.net/nesmapper.txt">Game Mapper List</a>
             <br>
             <br>
             <div class="key-table-wrapper">
-                <div class="key-table-title">Key Mapping</div>
+                <div class="key-table-title">Keys</div>
                 <table class="key-table">
                     <tr class="key-tr">
                         <th class="key-th">UP</th>
@@ -48,6 +44,13 @@
         </div>
         <div style="position:absolute; left:50%; top:50px; width:360px; margin-left: -680px;">
             <work-ram-viewer ref="WorkRamViewer"/>
+            <div class="info" style="background-color:#200; color:white; border:2px dashed #500; padding:5px 2px; font-weight:600; text-align:center;margin-top:10px;"> : PLZ READ BEFORE PLAY : </div>
+            <div class="info" style="background-color:#200; color:white; border:2px dashed #500; padding:5px 2px; margin-top:-2px;"> Only supports mapper 0 & 4 (NROM, MMC3) currently.</div>
+            <div class="info" style="background-color:#200; color:white; border:2px dashed #500; padding:5px 2px; margin-top:-2px;"> Firefox might be slow and laggy, Chrome is WAAY better :)</div>
+            <div class="info" style="background-color:#200; color:white; border:2px dashed #500; padding:5px 2px; margin-top:-2px;"> Audio is just half done yet, and :</div>
+            <div class="info" style="background-color:#200; color:white; border:2px dashed #500; padding:5px 2px; margin-top:-2px;"> &nbsp;&nbsp;- If you can't hear anything pls click RESET.</div>
+            <div class="info" style="background-color:#200; color:white; border:2px dashed #500; padding:5px 2px; margin-top:-2px;"> &nbsp;&nbsp;- If sounds glitched out after RESET pls refresh page.</div>
+            
         </div>
         <div style="position:absolute; left:50%; top:50px; width:360px; margin-left: 320px;">
             <v-ram-viewer ref="VRamViewer"/>
@@ -178,7 +181,6 @@ export default {
     .info{
         color: white;
         text-align:left;
-        width: 100%;
         font-size: 12px;
     }
     .key-table-wrapper{
