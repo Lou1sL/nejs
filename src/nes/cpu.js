@@ -179,7 +179,7 @@ class CPU{
         else { this.cycleCounter=0; return { mnem:'N/A', addressing:'N/A', cycle:0 } }
     }
 
-     //Addressing modes, adds X page cycle
+    //Addressing modes, adds X page cycle
     addrIMME()   { var addr = this.getPC();                                                    return addr }
     addrRELA()   { var addr = this.getPC();                                                    return addr }
     addrZP()     { var addr = this.busR(this.getPC());                                         return addr }
