@@ -156,7 +156,3 @@ typings/
 
 # Serverless directories
 .serverless
-
-science-park-wechat-fe.iml
-package-lock.json
-
