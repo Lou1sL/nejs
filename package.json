@@ -1,7 +1,7 @@
 {
   "name": "nejs",
   "version": "1.0.0",
-  "description": "NES simulator in javascript",
+  "description": "NES(FC) emulation in browser",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "vue-cli-service serve",
