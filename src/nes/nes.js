@@ -22,7 +22,7 @@ class NES {
     //https://wiki.nesdev.com/w/index.php/Cycle_reference_chart
     //PPU: 89342 per frame
     //CPU: 29780 per frame
-    step()        { for(var c=0;c<29780;c++) this.bus.clock() }
+    runOneSec()   { for(var c=0;c<29780;c++) this.bus.clock() }
     reset()       { this.bus.resetAll()                       }
     btnDown (btn) { this.bus.pad.btnDown(btn)                 }
     btnUp   (btn) { this.bus.pad.btnUp(btn)                   }

@@ -1,6 +1,9 @@
 <template>
     <div id="app">
         <div style="position:absolute; left:50%; top:50px; width:512px; margin-left: -256px;">
+            <div v-show="showfps" style="position:absolute; left:0%; top:0px; width:100%; color:white; background-color:rgba(1,1,1,0.5); padding:0 0 0 5px; font-size:12px;">
+                FPS:{{fps}} <br> EMU(ms):{{diff}} <br> STALL(ms):{{stall}}
+            </div>
             <canvas ref="myCanvas" id="canvas" width="512" height="480"></canvas>
             <br>
             <label for="rom-upload" class="big-red-button">LOAD</label>
@@ -64,7 +67,7 @@ import { SCALE_MODE ,BUTTON, NES } from './nes/nes'
 
 export default {
     name: "nejs",
-    data() { return { mspf:16.666,timer:null } },
+    data() { return { mspf:16.666,timer:null,fps:0,diff:0,stall:0,showfps:true,lastT:null } },
     created() { document.onkeydown = this.onKeyDown; document.onkeyup = this.onKeyUp; this.nes = null },
     mounted(){
         this.nes = new NES(this.$refs.myCanvas)
@@ -82,7 +85,6 @@ export default {
         },
         onKeyDown(e){
             if(this.nes == null) return
-            //console.log(e)
             if(e.key == "l" ) this.nes.btnDown(BUTTON.A      )
             if(e.key == "k" ) this.nes.btnDown(BUTTON.B      )
             if(e.key == "z" ) this.nes.btnDown(BUTTON.SELECT )
@@ -94,7 +96,6 @@ export default {
         },
         onKeyUp(e){
             if(this.nes == null) return
-            //console.log(e)
             if(e.key == "l" ) this.nes.btnUp(BUTTON.A      )
             if(e.key == "k" ) this.nes.btnUp(BUTTON.B      )
             if(e.key == "z" ) this.nes.btnUp(BUTTON.SELECT )
@@ -110,20 +111,25 @@ export default {
             reader.onload = evt => {
                 if(this.timer!=null)clearTimeout(this.timer)
                 this.nes.init(new Uint8Array(evt.target.result))
-                this.step()
+                this.runOneSec()
             }
             reader.onerror = evt => { console.error(evt) }
         },
-        step(){
-            var previousT = Date.now()
-            this.nes.step()
+        runOneSec(){
+            var tt = Date.now()
+            if(this.lastT != null) this.fps = (1000 / (tt - this.lastT)).toFixed(2)
+            this.lastT = tt
             clearTimeout(this.timer)
+            this.execOneSec()
+            var newT = Date.now()
+            this.diff = newT - this.lastT
+            this.stall = this.mspf - this.diff
+            this.timer = setTimeout(()=>{ this.runOneSec() }, this.stall)
+        },
+        execOneSec(){
+            this.nes.runOneSec()
             this.$refs.WorkRamViewer.stepCall()
             this.$refs.VRamViewer.stepCall()
-            var newT = Date.now()
-            var diff = newT - previousT
-            //console.log(diff)
-            this.timer = setTimeout(()=>{ this.step() }, this.mspf - diff)
         },
         reset(){
             this.nes.reset()

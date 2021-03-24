@@ -17,84 +17,245 @@ const IRQ = 0xFFFE
 
 const STACK_SHIFT = 0x0100
 
+//Addressing modes, adds X page cycle
+function ADDRESSING_IMPL(cpu, x){ return null }
+function ADDRESSING_ACCU(cpu, x){ return null }
+function ADDRESSING_IMME(cpu, x){ var addr = cpu.getPC();                                                                                      cpu.cc(1); return addr }
+function ADDRESSING_RELA(cpu, x){ var addr = cpu.getPC();                                                                                      cpu.cc(1); return addr }
+function ADDRESSING_OPAG(cpu, x){ var addr = cpu.busR(cpu.getPC());                                                                            cpu.cc(1); return addr }
+function ADDRESSING_OPGX(cpu, x){ var addr = (cpu.busR(cpu.getPC()) + cpu.x) & 0xFF;                                                           cpu.cc(1); return addr }
+function ADDRESSING_OPGY(cpu, x){ var addr = (cpu.busR(cpu.getPC()) + cpu.y) & 0xFF;                                                           cpu.cc(1); return addr }
+function ADDRESSING_ABSO(cpu, x){ var addr = cpu.busR16(cpu.getPC());                                                                          cpu.cc(2); return addr }
+function ADDRESSING_ABSX(cpu, x){ var from = cpu.busR16(cpu.getPC()); var addr = (from + cpu.x) & 0xFFFF; if(x)cpu.XPage(from,addr);           cpu.cc(2); return addr }
+function ADDRESSING_ABSY(cpu, x){ var from = cpu.busR16(cpu.getPC()); var addr = (from + cpu.y) & 0xFFFF; if(x)cpu.XPage(from,addr);           cpu.cc(2); return addr }
+function ADDRESSING_IDIR(cpu, x){ var addr = cpu.busR16(cpu.busR16(cpu.getPC()));                                                              cpu.cc(2); return addr }
+function ADDRESSING_XIDR(cpu, x){ var addr = cpu.busR16((cpu.busR(cpu.getPC()) + cpu.x) & 0xFF);                                               cpu.cc(1); return addr }
+function ADDRESSING_IDRY(cpu, x){ var from = cpu.busR16(cpu.busR(cpu.getPC())); var addr = (from + cpu.y) & 0xFFFF; if(x)cpu.XPage(from,addr); cpu.cc(1); return addr }
+
+//Opcode handling
+function OPCODE_NOP (cpu, addr) { /** ^_^ */ }
+
+function OPCODE_LDA (cpu, addr) { cpu.acc = cpu.busR(addr); cpu.srNZ(cpu.acc) }
+function OPCODE_STA (cpu, addr) { cpu.busW(addr,cpu.acc) }
+function OPCODE_LDX (cpu, addr) { cpu.x = cpu.busR(addr); cpu.srNZ(cpu.x) }
+function OPCODE_STX (cpu, addr) { cpu.busW(addr,cpu.x) }
+function OPCODE_LDY (cpu, addr) { cpu.y = cpu.busR(addr); cpu.srNZ(cpu.y) }
+function OPCODE_STY (cpu, addr) { cpu.busW(addr,cpu.y) }
+
+function OPCODE_TAX (cpu, addr) { cpu.x = cpu.acc; cpu.srNZ(cpu.x) }
+function OPCODE_TAY (cpu, addr) { cpu.y = cpu.acc; cpu.srNZ(cpu.y) }
+function OPCODE_TXA (cpu, addr) { cpu.acc = cpu.x; cpu.srNZ(cpu.acc) }
+function OPCODE_TYA (cpu, addr) { cpu.acc = cpu.y; cpu.srNZ(cpu.acc) }
+function OPCODE_TXS (cpu, addr) { cpu.sp = cpu.x }
+function OPCODE_TSX (cpu, addr) { cpu.x = cpu.sp; cpu.srNZ(cpu.x) }
+
+function OPCODE_ADC (cpu, addr) {
+    var data = cpu.busR(addr)
+    var res = (cpu.acc + data + ((cpu.sr & C) != 0 ? 1 : 0))
+    if((cpu.sr & D) != 0){
+        if(((cpu.acc & 0x0F) + (data & 0x0F) + ((cpu.sr & C) != 0 ? 1 : 0)) > 9) res += 6
+        cpu.srNZ(res & 0xFF)
+        cpu.srV(data,cpu.acc,res)
+        if(res > 0x99) res += 0x60
+        cpu.srC(res > 0x99)
+    } else { //todo:fix
+        cpu.srNZC(res & 0xFF,res > 0xFF)
+        cpu.srV(data,cpu.acc,res)
+    }
+    cpu.acc = res & 0xFF
+}
+function OPCODE_SBC (cpu, addr) {
+    var n = 0xFF - cpu.busR(addr)
+    var res = (cpu.acc + n + ((cpu.sr & C) != 0 ? 1 : 0))
+    cpu.srNZ(res & 0xFF)
+    cpu.srV(n,cpu.acc,res)
+    if((cpu.sr & D) != 0){ //todo:fix
+        if (((cpu.acc & 0x0F) - ((cpu.sr & C) != 0 ? 0 : 1)) < (n & 0x0F)) res -= 6
+	    if (res > 0x99) res -= 0x60
+    }
+    cpu.srC(res > 0xFF)
+    cpu.acc = res & 0xFF
+}
+
+function OPCODE_BIT (cpu, addr) {
+    var data = cpu.busR(addr)
+    var res = cpu.acc & data; cpu.srZ(res)
+    if((data & N) != 0) { cpu.sr |= N } else { cpu.sr &= (~N) }
+    if((data & V) != 0) { cpu.sr |= V } else { cpu.sr &= (~V) }
+}
+function OPCODE_CMP (cpu, addr) { var res = cpu.acc - cpu.busR(addr); cpu.srNZC(res & 0xFF,res >= 0) }
+function OPCODE_CPX (cpu, addr) { var res = cpu.x   - cpu.busR(addr); cpu.srNZC(res & 0xFF,res >= 0) }
+function OPCODE_CPY (cpu, addr) { var res = cpu.y   - cpu.busR(addr); cpu.srNZC(res & 0xFF,res >= 0) }
+
+function OPCODE_INX (cpu, addr) { cpu.x = (cpu.x + 1) & 0xFF; cpu.srNZ(cpu.x) }
+function OPCODE_INY (cpu, addr) { cpu.y = (cpu.y + 1) & 0xFF; cpu.srNZ(cpu.y) }
+function OPCODE_INC (cpu, addr) { var v = (cpu.busR(addr) + 1) & 0xFF; cpu.busW(addr,v); cpu.srNZ(v) }
+
+function OPCODE_DEX (cpu, addr) { cpu.x = (cpu.x - 1) & 0xFF; cpu.srNZ(cpu.x) }
+function OPCODE_DEY (cpu, addr) { cpu.y = (cpu.y - 1) & 0xFF; cpu.srNZ(cpu.y) }
+function OPCODE_DEC (cpu, addr) { var v = (cpu.busR(addr) - 1) & 0xFF; cpu.busW(addr,v); cpu.srNZ(v) }
+
+function OPCODE_AND (cpu, addr) { cpu.acc &= cpu.busR(addr); cpu.srNZ(cpu.acc) }
+function OPCODE_ORA (cpu, addr) { cpu.acc |= cpu.busR(addr); cpu.srNZ(cpu.acc) }
+function OPCODE_EOR (cpu, addr) { cpu.acc ^= cpu.busR(addr); cpu.srNZ(cpu.acc) }
+
+function OPCODE_ROL (cpu, addr) {
+    if(addr != null){ // ADDRESSING is not ACCU
+        var data = cpu.busR(addr)
+        var v = ((data << 1) | (((cpu.sr & C) == 0)? 0 : 1)) & 0xFF
+        cpu.srNZC(v,data >= 0x80)
+        cpu.busW(addr, v)
+    }else{ // ADDRESSING is ACCU
+        var v = ((cpu.acc << 1) | (((cpu.sr & C) == 0)? 0 : 1)) & 0xFF
+        cpu.srNZC(v,cpu.acc >= 0x80)
+        cpu.acc = v
+    }
+}
+function OPCODE_ROR (cpu, addr) {
+    if(addr != null){
+        var data = cpu.busR(addr)
+        var v = (data >> 1) | ((((cpu.sr & C) == 0)? 0 : 1) << 7)
+        cpu.srNZC(v,(data & 1) != 0)
+        cpu.busW(addr,v)
+    }else{
+        var v = (cpu.acc >> 1) | ((((cpu.sr & C) == 0)? 0 : 1) << 7)
+        cpu.srNZC(v,(cpu.acc & 1) != 0)
+        cpu.acc = v
+    }
+}
+function OPCODE_ASL (cpu, addr) {
+    if(addr != null){
+        var data = cpu.busR(addr)
+        var v = (data << 1) & 0xFF
+        cpu.srNZC(v,data >= 0x80)
+        cpu.busW(addr, v)
+    }else{
+        var v = (cpu.acc << 1) & 0xFF
+        cpu.srNZC(v,cpu.acc >= 0x80)
+        cpu.acc = v
+    }
+}
+function OPCODE_LSR (cpu, addr) {
+    if(addr != null){
+        var data = cpu.busR(addr)
+        var v = (data >> 1) & 0xFF
+        cpu.srNZC(v,(data & 1) != 0)
+        cpu.busW(addr,v)
+    }else{
+        var v = (cpu.acc >> 1) & 0xFF
+        cpu.srNZC(v,(cpu.acc & 1) != 0)
+        cpu.acc = v
+    }
+}
+
+function OPCODE_JMP (cpu, addr) { cpu.pc(addr) }
+function OPCODE_JSR (cpu, addr) { cpu.push16(cpu.getPC() - 1); cpu.pc(addr) }
+function OPCODE_RTS (cpu, addr) { cpu.pc(cpu.pop16() + 1) }
+function OPCODE_RTI (cpu, addr) { cpu.sr = cpu.pop() | R; cpu.pc(cpu.pop16()) }
+
+function OPCODE_BCC (cpu, addr) { if((cpu.sr & C) == 0) cpu.branch(addr) }
+function OPCODE_BCS (cpu, addr) { if((cpu.sr & C) != 0) cpu.branch(addr) }
+function OPCODE_BPL (cpu, addr) { if((cpu.sr & N) == 0) cpu.branch(addr) }
+function OPCODE_BMI (cpu, addr) { if((cpu.sr & N) != 0) cpu.branch(addr) }
+function OPCODE_BNE (cpu, addr) { if((cpu.sr & Z) == 0) cpu.branch(addr) }
+function OPCODE_BEQ (cpu, addr) { if((cpu.sr & Z) != 0) cpu.branch(addr) }
+function OPCODE_BVC (cpu, addr) { if((cpu.sr & V) == 0) cpu.branch(addr) }
+function OPCODE_BVS (cpu, addr) { if((cpu.sr & V) != 0) cpu.branch(addr) }
+
+function OPCODE_PHA (cpu, addr) { cpu.push(cpu.acc) }
+// https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag
+function OPCODE_PHP (cpu, addr) { cpu.push(cpu.sr | B) }
+function OPCODE_PLA (cpu, addr) { cpu.acc = cpu.pop(); cpu.srNZ(cpu.acc) }
+function OPCODE_PLP (cpu, addr) { cpu.sr = cpu.pop() | R }
+
+function OPCODE_CLC (cpu, addr) { cpu.sr &= ~C }
+function OPCODE_SEC (cpu, addr) { cpu.sr |=  C }
+function OPCODE_CLI (cpu, addr) { cpu.sr &= ~I }
+function OPCODE_SEI (cpu, addr) { cpu.sr |=  I }
+function OPCODE_CLV (cpu, addr) { cpu.sr &= ~V }
+function OPCODE_CLD (cpu, addr) { cpu.sr &= ~D }
+function OPCODE_SED (cpu, addr) { cpu.sr |=  D }
+
+function OPCODE_BRK (cpu, addr) { cpu.cc(1); cpu.BRK() }
+
 //http://nesdev.com/6502.txt
 const OPCODE = {
-    0x00 : { mnem:'BRK', addressing:'IMPL', cycle:7, xpgcyc:false }, 0x01 : { mnem:'ORA', addressing:'XIDR', cycle:6, xpgcyc:false },
-    0x05 : { mnem:'ORA', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x06 : { mnem:'ASL', addressing:'0PAG', cycle:5, xpgcyc:false },
-    0x08 : { mnem:'PHP', addressing:'IMPL', cycle:3, xpgcyc:false }, 0x09 : { mnem:'ORA', addressing:'IMME', cycle:2, xpgcyc:false },
-    0x0A : { mnem:'ASL', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x0D : { mnem:'ORA', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0x0E : { mnem:'ASL', addressing:'ABSO', cycle:6, xpgcyc:false }, 0x10 : { mnem:'BPL', addressing:'RELA', cycle:2, xpgcyc:true  },
-    0x11 : { mnem:'ORA', addressing:'IDRY', cycle:5, xpgcyc:true  }, 0x15 : { mnem:'ORA', addressing:'0PGX', cycle:4, xpgcyc:false },
-    0x16 : { mnem:'ASL', addressing:'0PGX', cycle:6, xpgcyc:false }, 0x18 : { mnem:'CLC', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0x19 : { mnem:'ORA', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0x1D : { mnem:'ORA', addressing:'ABSX', cycle:4, xpgcyc:true  },
-    0x1E : { mnem:'ASL', addressing:'ABSX', cycle:7, xpgcyc:false }, 0x20 : { mnem:'JSR', addressing:'ABSO', cycle:6, xpgcyc:false },
-    0x21 : { mnem:'AND', addressing:'XIDR', cycle:6, xpgcyc:false }, 0x24 : { mnem:'BIT', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0x25 : { mnem:'AND', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x26 : { mnem:'ROL', addressing:'0PAG', cycle:5, xpgcyc:false },
-    0x28 : { mnem:'PLP', addressing:'IMPL', cycle:4, xpgcyc:false }, 0x29 : { mnem:'AND', addressing:'IMME', cycle:2, xpgcyc:false },
-    0x2A : { mnem:'ROL', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x2C : { mnem:'BIT', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0x2D : { mnem:'AND', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x2E : { mnem:'ROL', addressing:'ABSO', cycle:6, xpgcyc:false },
-    0x30 : { mnem:'BMI', addressing:'RELA', cycle:2, xpgcyc:true  }, 0x31 : { mnem:'AND', addressing:'IDRY', cycle:5, xpgcyc:true  },
-    0x35 : { mnem:'AND', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x36 : { mnem:'ROL', addressing:'0PGX', cycle:6, xpgcyc:false },
-    0x38 : { mnem:'SEC', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x39 : { mnem:'AND', addressing:'ABSY', cycle:4, xpgcyc:true  },
-    0x3D : { mnem:'AND', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0x3E : { mnem:'ROL', addressing:'ABSX', cycle:7, xpgcyc:false },
-    0x40 : { mnem:'RTI', addressing:'IMPL', cycle:6, xpgcyc:false }, 0x41 : { mnem:'EOR', addressing:'XIDR', cycle:6, xpgcyc:false },
-    0x45 : { mnem:'EOR', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x46 : { mnem:'LSR', addressing:'0PAG', cycle:5, xpgcyc:false },
-    0x48 : { mnem:'PHA', addressing:'IMPL', cycle:3, xpgcyc:false }, 0x49 : { mnem:'EOR', addressing:'IMME', cycle:2, xpgcyc:false },
-    0x4A : { mnem:'LSR', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x4C : { mnem:'JMP', addressing:'ABSO', cycle:3, xpgcyc:false },
-    0x4D : { mnem:'EOR', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x4E : { mnem:'LSR', addressing:'ABSO', cycle:6, xpgcyc:false },
-    0x50 : { mnem:'BVC', addressing:'RELA', cycle:2, xpgcyc:true  }, 0x51 : { mnem:'EOR', addressing:'IDRY', cycle:5, xpgcyc:true  },
-    0x55 : { mnem:'EOR', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x56 : { mnem:'LSR', addressing:'0PGX', cycle:6, xpgcyc:false },
-    0x58 : { mnem:'CLI', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x59 : { mnem:'EOR', addressing:'ABSY', cycle:4, xpgcyc:true  },
-    0x5D : { mnem:'EOR', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0x5E : { mnem:'LSR', addressing:'ABSX', cycle:7, xpgcyc:false },
-    0x60 : { mnem:'RTS', addressing:'IMPL', cycle:6, xpgcyc:false }, 0x61 : { mnem:'ADC', addressing:'XIDR', cycle:6, xpgcyc:false },
-    0x65 : { mnem:'ADC', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x66 : { mnem:'ROR', addressing:'0PAG', cycle:5, xpgcyc:false },
-    0x68 : { mnem:'PLA', addressing:'IMPL', cycle:4, xpgcyc:false }, 0x69 : { mnem:'ADC', addressing:'IMME', cycle:2, xpgcyc:false },
-    0x6A : { mnem:'ROR', addressing:'ACCU', cycle:2, xpgcyc:false }, 0x6C : { mnem:'JMP', addressing:'IDIR', cycle:5, xpgcyc:false },
-    0x6D : { mnem:'ADC', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x6E : { mnem:'ROR', addressing:'ABSO', cycle:6, xpgcyc:false },
-    0x70 : { mnem:'BVS', addressing:'RELA', cycle:2, xpgcyc:true  }, 0x71 : { mnem:'ADC', addressing:'IDRY', cycle:5, xpgcyc:true  },
-    0x75 : { mnem:'ADC', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x76 : { mnem:'ROR', addressing:'0PGX', cycle:6, xpgcyc:false },
-    0x78 : { mnem:'SEI', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x79 : { mnem:'ADC', addressing:'ABSY', cycle:4, xpgcyc:true  },
-    0x7D : { mnem:'ADC', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0x7E : { mnem:'ROR', addressing:'ABSX', cycle:7, xpgcyc:false },
-    0x81 : { mnem:'STA', addressing:'XIDR', cycle:6, xpgcyc:false }, 0x84 : { mnem:'STY', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0x85 : { mnem:'STA', addressing:'0PAG', cycle:3, xpgcyc:false }, 0x86 : { mnem:'STX', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0x88 : { mnem:'DEY', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x8A : { mnem:'TXA', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0x8C : { mnem:'STY', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x8D : { mnem:'STA', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0x8E : { mnem:'STX', addressing:'ABSO', cycle:4, xpgcyc:false }, 0x90 : { mnem:'BCC', addressing:'RELA', cycle:2, xpgcyc:true  },
-    0x91 : { mnem:'STA', addressing:'IDRY', cycle:6, xpgcyc:false }, 0x94 : { mnem:'STY', addressing:'0PGX', cycle:4, xpgcyc:false },
-    0x95 : { mnem:'STA', addressing:'0PGX', cycle:4, xpgcyc:false }, 0x96 : { mnem:'STX', addressing:'0PGY', cycle:4, xpgcyc:false },
-    0x98 : { mnem:'TYA', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x99 : { mnem:'STA', addressing:'ABSY', cycle:5, xpgcyc:false },
-    0x9A : { mnem:'TXS', addressing:'IMPL', cycle:2, xpgcyc:false }, 0x9D : { mnem:'STA', addressing:'ABSX', cycle:5, xpgcyc:false },
-    0xA0 : { mnem:'LDY', addressing:'IMME', cycle:2, xpgcyc:false }, 0xA1 : { mnem:'LDA', addressing:'XIDR', cycle:6, xpgcyc:false },
-    0xA2 : { mnem:'LDX', addressing:'IMME', cycle:2, xpgcyc:false }, 0xA4 : { mnem:'LDY', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0xA5 : { mnem:'LDA', addressing:'0PAG', cycle:3, xpgcyc:false }, 0xA6 : { mnem:'LDX', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0xA8 : { mnem:'TAY', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xA9 : { mnem:'LDA', addressing:'IMME', cycle:2, xpgcyc:false },
-    0xAA : { mnem:'TAX', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xAC : { mnem:'LDY', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0xAD : { mnem:'LDA', addressing:'ABSO', cycle:4, xpgcyc:false }, 0xAE : { mnem:'LDX', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0xB0 : { mnem:'BCS', addressing:'RELA', cycle:2, xpgcyc:true  }, 0xB1 : { mnem:'LDA', addressing:'IDRY', cycle:5, xpgcyc:true  },
-    0xB4 : { mnem:'LDY', addressing:'0PGX', cycle:4, xpgcyc:false }, 0xB5 : { mnem:'LDA', addressing:'0PGX', cycle:4, xpgcyc:false },
-    0xB6 : { mnem:'LDX', addressing:'0PGY', cycle:4, xpgcyc:false }, 0xB8 : { mnem:'CLV', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0xB9 : { mnem:'LDA', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0xBA : { mnem:'TSX', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0xBC : { mnem:'LDY', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0xBD : { mnem:'LDA', addressing:'ABSX', cycle:4, xpgcyc:true  },
-    0xBE : { mnem:'LDX', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0xC0 : { mnem:'CPY', addressing:'IMME', cycle:2, xpgcyc:false },
-    0xC1 : { mnem:'CMP', addressing:'XIDR', cycle:6, xpgcyc:false }, 0xC4 : { mnem:'CPY', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0xC5 : { mnem:'CMP', addressing:'0PAG', cycle:3, xpgcyc:false }, 0xC6 : { mnem:'DEC', addressing:'0PAG', cycle:5, xpgcyc:false },
-    0xC8 : { mnem:'INY', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xC9 : { mnem:'CMP', addressing:'IMME', cycle:2, xpgcyc:false },
-    0xCA : { mnem:'DEX', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xCC : { mnem:'CPY', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0xCD : { mnem:'CMP', addressing:'ABSO', cycle:4, xpgcyc:false }, 0xCE : { mnem:'DEC', addressing:'ABSO', cycle:6, xpgcyc:false },
-    0xD0 : { mnem:'BNE', addressing:'RELA', cycle:2, xpgcyc:true  }, 0xD1 : { mnem:'CMP', addressing:'IDRY', cycle:5, xpgcyc:true  },
-    0xD5 : { mnem:'CMP', addressing:'0PGX', cycle:4, xpgcyc:false }, 0xD6 : { mnem:'DEC', addressing:'0PGX', cycle:6, xpgcyc:false },
-    0xD8 : { mnem:'CLD', addressing:'IMPL', cycle:2, xpgcyc:false }, 0xD9 : { mnem:'CMP', addressing:'ABSY', cycle:4, xpgcyc:true  },
-    0xDD : { mnem:'CMP', addressing:'ABSX', cycle:4, xpgcyc:true  }, 0xDE : { mnem:'DEC', addressing:'ABSX', cycle:7, xpgcyc:false },
-    0xE0 : { mnem:'CPX', addressing:'IMME', cycle:2, xpgcyc:false }, 0xE1 : { mnem:'SBC', addressing:'XIDR', cycle:6, xpgcyc:false },
-    0xE4 : { mnem:'CPX', addressing:'0PAG', cycle:3, xpgcyc:false }, 0xE5 : { mnem:'SBC', addressing:'0PAG', cycle:3, xpgcyc:false },
-    0xE6 : { mnem:'INC', addressing:'0PAG', cycle:5, xpgcyc:false }, 0xE8 : { mnem:'INX', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0xE9 : { mnem:'SBC', addressing:'IMME', cycle:2, xpgcyc:false }, 0xEA : { mnem:'NOP', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0xEC : { mnem:'CPX', addressing:'ABSO', cycle:4, xpgcyc:false }, 0xED : { mnem:'SBC', addressing:'ABSO', cycle:4, xpgcyc:false },
-    0xEE : { mnem:'INC', addressing:'ABSO', cycle:6, xpgcyc:false }, 0xF0 : { mnem:'BEQ', addressing:'RELA', cycle:2, xpgcyc:true  },
-    0xF1 : { mnem:'SBC', addressing:'IDRY', cycle:5, xpgcyc:true  }, 0xF5 : { mnem:'SBC', addressing:'0PGX', cycle:4, xpgcyc:false },
-    0xF6 : { mnem:'INC', addressing:'0PGX', cycle:6, xpgcyc:false }, 0xF8 : { mnem:'SED', addressing:'IMPL', cycle:2, xpgcyc:false },
-    0xF9 : { mnem:'SBC', addressing:'ABSY', cycle:4, xpgcyc:true  }, 0xFD : { mnem:'SBC', addressing:'ABSX', cycle:4, xpgcyc:true  },
-    0xFE : { mnem:'INC', addressing:'ABSX', cycle:7, xpgcyc:false },
+    0x00 : { handler:OPCODE_BRK, addressing:ADDRESSING_IMPL, cycle:7, xpgcyc:false }, 0x01 : { handler:OPCODE_ORA, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false },
+    0x05 : { handler:OPCODE_ORA, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0x06 : { handler:OPCODE_ASL, addressing:ADDRESSING_OPAG, cycle:5, xpgcyc:false },
+    0x08 : { handler:OPCODE_PHP, addressing:ADDRESSING_IMPL, cycle:3, xpgcyc:false }, 0x09 : { handler:OPCODE_ORA, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0x0A : { handler:OPCODE_ASL, addressing:ADDRESSING_ACCU, cycle:2, xpgcyc:false }, 0x0D : { handler:OPCODE_ORA, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0x0E : { handler:OPCODE_ASL, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false }, 0x10 : { handler:OPCODE_BPL, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  },
+    0x11 : { handler:OPCODE_ORA, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  }, 0x15 : { handler:OPCODE_ORA, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false },
+    0x16 : { handler:OPCODE_ASL, addressing:ADDRESSING_OPGX, cycle:6, xpgcyc:false }, 0x18 : { handler:OPCODE_CLC, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0x19 : { handler:OPCODE_ORA, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  }, 0x1D : { handler:OPCODE_ORA, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  },
+    0x1E : { handler:OPCODE_ASL, addressing:ADDRESSING_ABSX, cycle:7, xpgcyc:false }, 0x20 : { handler:OPCODE_JSR, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false },
+    0x21 : { handler:OPCODE_AND, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false }, 0x24 : { handler:OPCODE_BIT, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0x25 : { handler:OPCODE_AND, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0x26 : { handler:OPCODE_ROL, addressing:ADDRESSING_OPAG, cycle:5, xpgcyc:false },
+    0x28 : { handler:OPCODE_PLP, addressing:ADDRESSING_IMPL, cycle:4, xpgcyc:false }, 0x29 : { handler:OPCODE_AND, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0x2A : { handler:OPCODE_ROL, addressing:ADDRESSING_ACCU, cycle:2, xpgcyc:false }, 0x2C : { handler:OPCODE_BIT, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0x2D : { handler:OPCODE_AND, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0x2E : { handler:OPCODE_ROL, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false },
+    0x30 : { handler:OPCODE_BMI, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  }, 0x31 : { handler:OPCODE_AND, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  },
+    0x35 : { handler:OPCODE_AND, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false }, 0x36 : { handler:OPCODE_ROL, addressing:ADDRESSING_OPGX, cycle:6, xpgcyc:false },
+    0x38 : { handler:OPCODE_SEC, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0x39 : { handler:OPCODE_AND, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  },
+    0x3D : { handler:OPCODE_AND, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  }, 0x3E : { handler:OPCODE_ROL, addressing:ADDRESSING_ABSX, cycle:7, xpgcyc:false },
+    0x40 : { handler:OPCODE_RTI, addressing:ADDRESSING_IMPL, cycle:6, xpgcyc:false }, 0x41 : { handler:OPCODE_EOR, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false },
+    0x45 : { handler:OPCODE_EOR, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0x46 : { handler:OPCODE_LSR, addressing:ADDRESSING_OPAG, cycle:5, xpgcyc:false },
+    0x48 : { handler:OPCODE_PHA, addressing:ADDRESSING_IMPL, cycle:3, xpgcyc:false }, 0x49 : { handler:OPCODE_EOR, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0x4A : { handler:OPCODE_LSR, addressing:ADDRESSING_ACCU, cycle:2, xpgcyc:false }, 0x4C : { handler:OPCODE_JMP, addressing:ADDRESSING_ABSO, cycle:3, xpgcyc:false },
+    0x4D : { handler:OPCODE_EOR, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0x4E : { handler:OPCODE_LSR, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false },
+    0x50 : { handler:OPCODE_BVC, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  }, 0x51 : { handler:OPCODE_EOR, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  },
+    0x55 : { handler:OPCODE_EOR, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false }, 0x56 : { handler:OPCODE_LSR, addressing:ADDRESSING_OPGX, cycle:6, xpgcyc:false },
+    0x58 : { handler:OPCODE_CLI, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0x59 : { handler:OPCODE_EOR, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  },
+    0x5D : { handler:OPCODE_EOR, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  }, 0x5E : { handler:OPCODE_LSR, addressing:ADDRESSING_ABSX, cycle:7, xpgcyc:false },
+    0x60 : { handler:OPCODE_RTS, addressing:ADDRESSING_IMPL, cycle:6, xpgcyc:false }, 0x61 : { handler:OPCODE_ADC, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false },
+    0x65 : { handler:OPCODE_ADC, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0x66 : { handler:OPCODE_ROR, addressing:ADDRESSING_OPAG, cycle:5, xpgcyc:false },
+    0x68 : { handler:OPCODE_PLA, addressing:ADDRESSING_IMPL, cycle:4, xpgcyc:false }, 0x69 : { handler:OPCODE_ADC, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0x6A : { handler:OPCODE_ROR, addressing:ADDRESSING_ACCU, cycle:2, xpgcyc:false }, 0x6C : { handler:OPCODE_JMP, addressing:ADDRESSING_IDIR, cycle:5, xpgcyc:false },
+    0x6D : { handler:OPCODE_ADC, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0x6E : { handler:OPCODE_ROR, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false },
+    0x70 : { handler:OPCODE_BVS, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  }, 0x71 : { handler:OPCODE_ADC, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  },
+    0x75 : { handler:OPCODE_ADC, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false }, 0x76 : { handler:OPCODE_ROR, addressing:ADDRESSING_OPGX, cycle:6, xpgcyc:false },
+    0x78 : { handler:OPCODE_SEI, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0x79 : { handler:OPCODE_ADC, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  },
+    0x7D : { handler:OPCODE_ADC, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  }, 0x7E : { handler:OPCODE_ROR, addressing:ADDRESSING_ABSX, cycle:7, xpgcyc:false },
+    0x81 : { handler:OPCODE_STA, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false }, 0x84 : { handler:OPCODE_STY, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0x85 : { handler:OPCODE_STA, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0x86 : { handler:OPCODE_STX, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0x88 : { handler:OPCODE_DEY, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0x8A : { handler:OPCODE_TXA, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0x8C : { handler:OPCODE_STY, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0x8D : { handler:OPCODE_STA, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0x8E : { handler:OPCODE_STX, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0x90 : { handler:OPCODE_BCC, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  },
+    0x91 : { handler:OPCODE_STA, addressing:ADDRESSING_IDRY, cycle:6, xpgcyc:false }, 0x94 : { handler:OPCODE_STY, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false },
+    0x95 : { handler:OPCODE_STA, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false }, 0x96 : { handler:OPCODE_STX, addressing:ADDRESSING_OPGY, cycle:4, xpgcyc:false },
+    0x98 : { handler:OPCODE_TYA, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0x99 : { handler:OPCODE_STA, addressing:ADDRESSING_ABSY, cycle:5, xpgcyc:false },
+    0x9A : { handler:OPCODE_TXS, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0x9D : { handler:OPCODE_STA, addressing:ADDRESSING_ABSX, cycle:5, xpgcyc:false },
+    0xA0 : { handler:OPCODE_LDY, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false }, 0xA1 : { handler:OPCODE_LDA, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false },
+    0xA2 : { handler:OPCODE_LDX, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false }, 0xA4 : { handler:OPCODE_LDY, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0xA5 : { handler:OPCODE_LDA, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0xA6 : { handler:OPCODE_LDX, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0xA8 : { handler:OPCODE_TAY, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0xA9 : { handler:OPCODE_LDA, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0xAA : { handler:OPCODE_TAX, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0xAC : { handler:OPCODE_LDY, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0xAD : { handler:OPCODE_LDA, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0xAE : { handler:OPCODE_LDX, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0xB0 : { handler:OPCODE_BCS, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  }, 0xB1 : { handler:OPCODE_LDA, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  },
+    0xB4 : { handler:OPCODE_LDY, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false }, 0xB5 : { handler:OPCODE_LDA, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false },
+    0xB6 : { handler:OPCODE_LDX, addressing:ADDRESSING_OPGY, cycle:4, xpgcyc:false }, 0xB8 : { handler:OPCODE_CLV, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0xB9 : { handler:OPCODE_LDA, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  }, 0xBA : { handler:OPCODE_TSX, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0xBC : { handler:OPCODE_LDY, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  }, 0xBD : { handler:OPCODE_LDA, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  },
+    0xBE : { handler:OPCODE_LDX, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  }, 0xC0 : { handler:OPCODE_CPY, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0xC1 : { handler:OPCODE_CMP, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false }, 0xC4 : { handler:OPCODE_CPY, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0xC5 : { handler:OPCODE_CMP, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0xC6 : { handler:OPCODE_DEC, addressing:ADDRESSING_OPAG, cycle:5, xpgcyc:false },
+    0xC8 : { handler:OPCODE_INY, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0xC9 : { handler:OPCODE_CMP, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false },
+    0xCA : { handler:OPCODE_DEX, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0xCC : { handler:OPCODE_CPY, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0xCD : { handler:OPCODE_CMP, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0xCE : { handler:OPCODE_DEC, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false },
+    0xD0 : { handler:OPCODE_BNE, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  }, 0xD1 : { handler:OPCODE_CMP, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  },
+    0xD5 : { handler:OPCODE_CMP, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false }, 0xD6 : { handler:OPCODE_DEC, addressing:ADDRESSING_OPGX, cycle:6, xpgcyc:false },
+    0xD8 : { handler:OPCODE_CLD, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false }, 0xD9 : { handler:OPCODE_CMP, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  },
+    0xDD : { handler:OPCODE_CMP, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  }, 0xDE : { handler:OPCODE_DEC, addressing:ADDRESSING_ABSX, cycle:7, xpgcyc:false },
+    0xE0 : { handler:OPCODE_CPX, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false }, 0xE1 : { handler:OPCODE_SBC, addressing:ADDRESSING_XIDR, cycle:6, xpgcyc:false },
+    0xE4 : { handler:OPCODE_CPX, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false }, 0xE5 : { handler:OPCODE_SBC, addressing:ADDRESSING_OPAG, cycle:3, xpgcyc:false },
+    0xE6 : { handler:OPCODE_INC, addressing:ADDRESSING_OPAG, cycle:5, xpgcyc:false }, 0xE8 : { handler:OPCODE_INX, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0xE9 : { handler:OPCODE_SBC, addressing:ADDRESSING_IMME, cycle:2, xpgcyc:false }, 0xEA : { handler:OPCODE_NOP, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0xEC : { handler:OPCODE_CPX, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false }, 0xED : { handler:OPCODE_SBC, addressing:ADDRESSING_ABSO, cycle:4, xpgcyc:false },
+    0xEE : { handler:OPCODE_INC, addressing:ADDRESSING_ABSO, cycle:6, xpgcyc:false }, 0xF0 : { handler:OPCODE_BEQ, addressing:ADDRESSING_RELA, cycle:2, xpgcyc:true  },
+    0xF1 : { handler:OPCODE_SBC, addressing:ADDRESSING_IDRY, cycle:5, xpgcyc:true  }, 0xF5 : { handler:OPCODE_SBC, addressing:ADDRESSING_OPGX, cycle:4, xpgcyc:false },
+    0xF6 : { handler:OPCODE_INC, addressing:ADDRESSING_OPGX, cycle:6, xpgcyc:false }, 0xF8 : { handler:OPCODE_SED, addressing:ADDRESSING_IMPL, cycle:2, xpgcyc:false },
+    0xF9 : { handler:OPCODE_SBC, addressing:ADDRESSING_ABSY, cycle:4, xpgcyc:true  }, 0xFD : { handler:OPCODE_SBC, addressing:ADDRESSING_ABSX, cycle:4, xpgcyc:true  },
+    0xFE : { handler:OPCODE_INC, addressing:ADDRESSING_ABSX, cycle:7, xpgcyc:false },
 }
 
 class CPU{
@@ -176,191 +337,15 @@ class CPU{
         var b = this.busR(this.getPC())
         this.cc(1)
         if(OPCODE.hasOwnProperty(b)) { this.cycleCounter=OPCODE[b]['cycle']; return OPCODE[b] }
-        else { this.cycleCounter=0; return { mnem:'N/A', addressing:'N/A', cycle:0 } }
+        else { this.cycleCounter=0; return null }
     }
-
-    //Addressing modes, adds X page cycle
-    addrIMME()   { var addr = this.getPC();                                                    return addr }
-    addrRELA()   { var addr = this.getPC();                                                    return addr }
-    addrZP()     { var addr = this.busR(this.getPC());                                         return addr }
-    addrZPX()    { var addr = (this.addrZP() + this.x) & 0xFF;                                 return addr }
-    addrZPY()    { var addr = (this.addrZP() + this.y) & 0xFF;                                 return addr }
-    addrABS()    { var addr = this.busR16(this.getPC());                                       return addr }
-    addrABSX(x)  { var from = this.addrABS(); var addr = (from + this.x) & 0xFFFF; if(x)this.XPage(from,addr); return addr }
-    addrABSY(x)  { var from = this.addrABS(); var addr = (from + this.y) & 0xFFFF; if(x)this.XPage(from,addr); return addr }
-    addrINDIR()  { var addr = this.busR16(this.addrABS());                                     return addr }
-    addrXINDIR() { var addr = this.busR16(this.addrZPX());                                     return addr }
-    addrINDIRY(x){ var from = this.busR16(this.addrZP()); var addr = (from + this.y) & 0xFFFF; if(x)this.XPage(from,addr); return addr }
-
-    fetchAddr(opcode) {
-        var addressing = opcode['addressing']
-        //Some instructions don't suffer from cross page cycle penalties
-        var x = opcode['xpgcyc']
-        
-             if(addressing == 'IMPL') { return null }
-        else if(addressing == 'ACCU') { return null }
-        else if(addressing == 'IMME') { var d = this.addrIMME();    this.cc(1); return d }
-        else if(addressing == 'RELA') { var d = this.addrRELA();    this.cc(1); return d }
-        else if(addressing == '0PAG') { var d = this.addrZP();      this.cc(1); return d }
-        else if(addressing == 'ABSO') { var d = this.addrABS();     this.cc(2); return d }
-        else if(addressing == 'IDIR') { var d = this.addrINDIR();   this.cc(2); return d }
-        else if(addressing == '0PGX') { var d = this.addrZPX();     this.cc(1); return d }
-        else if(addressing == 'ABSX') { var d = this.addrABSX(x);   this.cc(2); return d }
-        else if(addressing == 'XIDR') { var d = this.addrXINDIR();  this.cc(1); return d }
-        else if(addressing == '0PGY') { var d = this.addrZPY();     this.cc(1); return d }
-        else if(addressing == 'ABSY') { var d = this.addrABSY(x);   this.cc(2); return d }
-        else if(addressing == 'IDRY') { var d = this.addrINDIRY(x); this.cc(1); return d }
-        else { return null }
-    } 
-
+    
     step(){
         var opcode = this.fetchOpcode()
-        var addr   = this.fetchAddr(opcode)
-        var mnem   = opcode['mnem']
-
-             if(mnem == 'NOP') { /** ^_^ */ }
-        else if(mnem == 'LDA') { this.acc = this.busR(addr); this.srNZ(this.acc) }
-        else if(mnem == 'STA') { this.busW(addr,this.acc) }
-        else if(mnem == 'LDX') { this.x = this.busR(addr); this.srNZ(this.x) }
-        else if(mnem == 'STX') { this.busW(addr,this.x) }
-        else if(mnem == 'LDY') { this.y = this.busR(addr); this.srNZ(this.y) }
-        else if(mnem == 'STY') { this.busW(addr,this.y) }
-
-        else if(mnem == 'TAX') { this.x = this.acc; this.srNZ(this.x) }
-        else if(mnem == 'TAY') { this.y = this.acc; this.srNZ(this.y) }
-        else if(mnem == 'TXA') { this.acc = this.x; this.srNZ(this.acc) }
-        else if(mnem == 'TYA') { this.acc = this.y; this.srNZ(this.acc) }
-        else if(mnem == 'TXS') { this.sp = this.x }
-        else if(mnem == 'TSX') { this.x = this.sp; this.srNZ(this.x) }
-
-        else if(mnem == 'ADC') {
-            var data = this.busR(addr)
-            var res = (this.acc + data + ((this.sr & C) != 0 ? 1 : 0))
-            if((this.sr & D) != 0){
-                if(((this.acc & 0x0F) + (data & 0x0F) + ((this.sr & C) != 0 ? 1 : 0)) > 9) res += 6
-                this.srNZ(res & 0xFF)
-                this.srV(data,this.acc,res)
-                if(res > 0x99) res += 0x60
-                this.srC(res > 0x99)
-            } else { //todo:fix
-                this.srNZC(res & 0xFF,res > 0xFF)
-                this.srV(data,this.acc,res)
-            }
-            this.acc = res & 0xFF
-        }
-        else if(mnem == 'SBC') {
-            var n = 0xFF - this.busR(addr)
-            var res = (this.acc + n + ((this.sr & C) != 0 ? 1 : 0))
-            this.srNZ(res & 0xFF)
-            this.srV(n,this.acc,res)
-            if((this.sr & D) != 0){ //todo:fix
-                if (((this.acc & 0x0F) - ((this.sr & C) != 0 ? 0 : 1)) < (n & 0x0F)) res -= 6
-		        if (res > 0x99) res -= 0x60
-            }
-            this.srC(res > 0xFF)
-            this.acc = res & 0xFF
-        }
-
-        else if(mnem == 'BIT') {
-            var data = this.busR(addr)
-            var res = this.acc & data; this.srZ(res)
-            if((data & N) != 0) { this.sr |= N } else { this.sr &= (~N) }
-            if((data & V) != 0) { this.sr |= V } else { this.sr &= (~V) }
-        }
-        else if(mnem == 'CMP') { var res = this.acc - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
-        else if(mnem == 'CPX') { var res = this.x   - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
-        else if(mnem == 'CPY') { var res = this.y   - this.busR(addr); this.srNZC(res & 0xFF,res >= 0) }
-
-        else if(mnem == 'INX') { this.x = (this.x + 1) & 0xFF; this.srNZ(this.x) }
-        else if(mnem == 'INY') { this.y = (this.y + 1) & 0xFF; this.srNZ(this.y) }
-        else if(mnem == 'INC') { var v = (this.busR(addr) + 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
-
-        else if(mnem == 'DEX') { this.x = (this.x - 1) & 0xFF; this.srNZ(this.x) }
-        else if(mnem == 'DEY') { this.y = (this.y - 1) & 0xFF; this.srNZ(this.y) }
-        else if(mnem == 'DEC') { var v = (this.busR(addr) - 1) & 0xFF; this.busW(addr,v); this.srNZ(v) }
-
-        else if(mnem == 'AND') { this.acc &= this.busR(addr); this.srNZ(this.acc) }
-        else if(mnem == 'ORA') { this.acc |= this.busR(addr); this.srNZ(this.acc) }
-        else if(mnem == 'EOR') { this.acc ^= this.busR(addr); this.srNZ(this.acc) }
-
-        else if(mnem == 'ROL' && (opcode['addressing'] != 'ACCU')) {
-            var data = this.busR(addr)
-            var v = ((data << 1) | (((this.sr & C) == 0)? 0 : 1)) & 0xFF
-            this.srNZC(v,data >= 0x80)
-            this.busW(addr, v)
-        }
-        else if(mnem == 'ROL' && (opcode['addressing'] == 'ACCU')) {
-            var v = ((this.acc << 1) | (((this.sr & C) == 0)? 0 : 1)) & 0xFF
-            this.srNZC(v,this.acc >= 0x80)
-            this.acc = v
-        }
-        else if(mnem == 'ROR' && (opcode['addressing'] != 'ACCU')) {
-            var data = this.busR(addr)
-            var v = (data >> 1) | ((((this.sr & C) == 0)? 0 : 1) << 7)
-            this.srNZC(v,(data & 1) != 0)
-            this.busW(addr,v)
-        }
-        else if(mnem == 'ROR' && (opcode['addressing'] == 'ACCU')) { 
-            var v = (this.acc >> 1) | ((((this.sr & C) == 0)? 0 : 1) << 7)
-            this.srNZC(v,(this.acc & 1) != 0)
-            this.acc = v
-        }
-
-        else if(mnem == 'ASL' && (opcode['addressing'] != 'ACCU')) {
-            var data = this.busR(addr)
-            var v = (data << 1) & 0xFF
-            this.srNZC(v,data >= 0x80)
-            this.busW(addr, v)
-        }
-        else if(mnem == 'ASL' && (opcode['addressing'] == 'ACCU')) {
-            var v = (this.acc << 1) & 0xFF
-            this.srNZC(v,this.acc >= 0x80)
-            this.acc = v
-        }
-
-        else if(mnem == 'LSR' && (opcode['addressing'] != 'ACCU')) {
-            var data = this.busR(addr)
-            var v = (data >> 1) & 0xFF
-            this.srNZC(v,(data & 1) != 0)
-            this.busW(addr,v)
-        }
-        else if(mnem == 'LSR' && (opcode['addressing'] == 'ACCU')) { 
-            var v = (this.acc >> 1) & 0xFF
-            this.srNZC(v,(this.acc & 1) != 0)
-            this.acc = v
-        }
-
-        else if(mnem == 'JMP') { this.pc(addr) }
-        else if(mnem == 'JSR') { this.push16(this.getPC() - 1); this.pc(addr) }
-        else if(mnem == 'RTS') { this.pc(this.pop16() + 1) }
-        else if(mnem == 'RTI') { this.sr = this.pop() | R; this.pc(this.pop16()) }
-
-        else if(mnem == 'BCC') { if((this.sr & C) == 0) this.branch(addr) }
-        else if(mnem == 'BCS') { if((this.sr & C) != 0) this.branch(addr) }
-        else if(mnem == 'BPL') { if((this.sr & N) == 0) this.branch(addr) }
-        else if(mnem == 'BMI') { if((this.sr & N) != 0) this.branch(addr) }
-        else if(mnem == 'BNE') { if((this.sr & Z) == 0) this.branch(addr) }
-        else if(mnem == 'BEQ') { if((this.sr & Z) != 0) this.branch(addr) }
-        else if(mnem == 'BVC') { if((this.sr & V) == 0) this.branch(addr) }
-        else if(mnem == 'BVS') { if((this.sr & V) != 0) this.branch(addr) }
-
-        else if(mnem == 'PHA') { this.push(this.acc) }
-        // https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag
-        else if(mnem == 'PHP') { this.push(this.sr | B) }
-        else if(mnem == 'PLA') { this.acc = this.pop(); this.srNZ(this.acc) }
-        else if(mnem == 'PLP') { this.sr = this.pop() | R }
-
-        else if(mnem == 'CLC') { this.sr &= ~C }
-        else if(mnem == 'SEC') { this.sr |=  C }
-        else if(mnem == 'CLI') { this.sr &= ~I }
-        else if(mnem == 'SEI') { this.sr |=  I }
-        else if(mnem == 'CLV') { this.sr &= ~V }
-        else if(mnem == 'CLD') { this.sr &= ~D }
-        else if(mnem == 'SED') { this.sr |=  D }
-
-        else if(mnem == 'BRK') { this.cc(1); this.BRK() }
-
-        else { throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']') }
+        if(opcode === null) throw ('Illegal opcode: [' + this.busR(this.getPC()) + '] at ['+this.dbgHexStr16(this.getPC())+']')
+        //Some instructions don't suffer from cross page cycle penalties
+        var addr = opcode['addressing'](this, opcode['xpgcyc'])
+        opcode['handler'](this, addr)
     }
 
     clock() {
@@ -372,13 +357,13 @@ class CPU{
     printStatus() {
         process.stdout.cursorTo(0,0)
         var op = OPCODE[this.busR(this.getPC())]
-        process.stdout.write(' ║ PC═════╗ A════╗ X════╗ Y════╗ S════╗ N V - B D I Z C ═╗ ╔ OPCODE════╗\n')
+        process.stdout.write(' ║ PC═════╗ A════╗ X════╗ Y════╗ S════╗ N V - B D I Z C ═╗ \n')
         process.stdout.write(
             ' ║ ' + this.dbgHexStr(this.getPC(),4) + ' ║ ' + this.dbgHexStr(this.acc) + 
             ' ║ ' + this.dbgHexStr(this.x)         + ' ║ ' + this.dbgHexStr(this.y) + 
             ' ║ ' + this.dbgHexStr(this.sp)        + ' ║ ' + this.dbgBinStr(this.sr)+ 
-            ' ║ ' + '║ '+op.mnem+'['+op.addressing+'] ║'+ '\n')
-        process.stdout.write(' ╚════════╩══════╩══════╩══════╩══════╩══════════════════╝ ╚═══════════╝\n')
+            ' ║ ' + '\n')
+        process.stdout.write(' ╚════════╩══════╩══════╩══════╩══════╩══════════════════╝ \n')
     }
     dbgHexStr(val,pad=2) { return '0x'+val.toString(16).toUpperCase().padStart(pad, '0') }
     dbgBinStr(val)       { return (val & 0xFF).toString(2).padStart(8, '0').replace(/1/g,'😊 ').replace(/0/g,'😭 ') }
