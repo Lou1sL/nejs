@@ -1,0 +1,23 @@
+@charset "UTF-8";
+
+@font-face {
+    font-family: "dragon";
+    src:url('dragon.eot?#iefix') format('embedded-opentype'),
+        url("dragon.woff") format("woff"),
+        url("dragon.ttf") format("truetype"),
+        url('dragon.svg#Windows') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    transform: scale(0.5);
+}
+
+.dragon {
+    font-family: "dragon" !important;
+    letter-spacing: 1px !important;
+    font-size: 10px;
+    font-style: normal !important;
+    font-weight: 50 !important;
+    padding: 2px 0px;
+    
+    -webkit-font-smoothing: none;
+}
